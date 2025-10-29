@@ -267,23 +267,10 @@ SmartReader/
 
 ## 📝 Roadmap
 
-### Version 1.1 (Q1 2025)
+### Version 1.2 (2025)
 - [ ] Multiple book support (query across books)
 - [ ] Export chat history
 - [ ] Dark mode
-- [ ] Customizable chunk size
-
-### Version 1.2 (Q2 2025)
-- [ ] EPUB support
-- [ ] Citation export (BibTeX)
-- [ ] Advanced search filters
-- [ ] GPU acceleration
-
-### Version 2.0 (Q3 2025)
-- [ ] Multi-language support
-- [ ] Cloud sync (optional)
-- [ ] Mobile companion app
-- [ ] Collaborative annotations
 
 ---
 
