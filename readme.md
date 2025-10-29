@@ -33,13 +33,36 @@ SmartReader is a Windows desktop application that transforms how you interact wi
 - **Clean Interface** - Intuitive design focused on productivity
 - **No Configuration** - Works out of the box
 
+## 💾 Data Storage & Cache Management
+
+SmartReader stores cached book indexes in a permanent location:
+
+**Windows:** `C:\Users\YourName\AppData\Roaming\SmartReader\cache`  
+**macOS:** `~/Library/Application Support/SmartReader/cache`  
+**Linux:** `~/.config/smartreader/cache`
+
+### Why Permanent Cache?
+- ✅ Cache survives app updates
+- ✅ Cache works regardless of where you run the .exe
+- ✅ Move SmartReader anywhere without re-indexing
+- ✅ Professional desktop application standard
+
+### Managing Cache
+- **View cache location:** Tools → Cache Location
+- **Clear all cached books:** Tools → Clear Cache
+- **Manual cleanup:** Simply delete the cache folder
+
+Cache files are named uniquely based on PDF content, so:
+- Same PDF = reuses cache ✅
+- Modified PDF = creates new cache ✅
+- Renamed PDF = still finds cache ✅
 ---
 
 ## 📥 Download
 
-### Latest Release (v1.1.0)
+### Latest Release (v1.1.1)
 
-**[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.1.0/SmartReader.exe)**
+**[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.1.1/SmartReader.exe)**
 
 *Size: ~25 MB | Platform: Windows 10/11 | License: MIT*
 
