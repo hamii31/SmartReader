@@ -37,11 +37,11 @@ SmartReader is a Windows desktop application that transforms how you interact wi
 
 ## 📥 Download
 
-### Latest Release (v1.0.0)
+### Latest Release (v1.1.0)
 
-**[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.0.0/SmartReader.exe)**
+**[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.1.0/SmartReader.exe)**
 
-*Size: ~30 MB | Platform: Windows 10/11 | License: MIT*
+*Size: ~25 MB | Platform: Windows 10/11 | License: MIT*
 
 ## 📋 System Requirements
 
