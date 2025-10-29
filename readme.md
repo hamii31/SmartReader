@@ -217,7 +217,6 @@ SmartReader/
 │
 ├── cache/                   # Book indexes (auto-generated)
 ├── dist/                    # Built executable
-├── screenshots/             # App screenshots
 │
 └── README.md               # This file
 ```
