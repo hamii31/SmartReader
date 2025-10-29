@@ -11,7 +11,7 @@ print("🔨 Building SmartReader Executable")
 print("=" * 70)
 
 APP_NAME = "SmartReader"
-VERSION = "1.0.0"
+VERSION = "1.1.1"
 ICON = "icon.ico"  # Optional
 
 # Check if icon exists

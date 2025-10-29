@@ -361,7 +361,7 @@ def show_splash_screen():
 def main():
     """Main entry point"""
     print("=" * 70)
-    print("SmartReader v1.0.0")
+    print("SmartReader v1.1.1")
     print("=" * 70)
     print()
     

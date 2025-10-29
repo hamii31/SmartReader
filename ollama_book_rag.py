@@ -167,8 +167,9 @@ class BookRAGSystem:
             with open(cache_path, 'rb') as f:
                 self.chunks = pickle.load(f)
             
-            self.index_built = True
+            self.index_built = True  # CRITICAL: Mark index as built
             print(f"✓ Loaded {len(self.chunks)} chunks from cache")
+            print(f"✓ Index marked as built: {self.index_built}")
             return True
         except Exception as e:
             print(f"Warning: Could not load cache: {e}")

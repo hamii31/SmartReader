@@ -87,9 +87,11 @@ class BookRAGApp:
         """Initialize RAG system on startup"""
         try:
             self.rag = BookRAGSystem(model_name="llama3.2")
-            print(f"✓ RAG system initialized with cache at: {self.rag.cache_dir}")
+            print(f"✓ RAG system initialized")
+            print(f"✓ Cache directory: {self.rag.cache_dir}")
         except Exception as e:
             print(f"Warning: Could not initialize RAG: {e}")
+            self.rag = None
     
     def create_menu(self):
         """Create menu bar"""
@@ -410,7 +412,7 @@ class BookRAGApp:
         # Version label
         tk.Label(
             status_bar,
-            text="v1.0.0",
+            text="v1.1.1",
             font=("Segoe UI", 8),
             bg=self.colors['bg_medium'],
             fg=self.colors['text_medium']
@@ -491,13 +493,14 @@ https://ollama.com/download"""
     
     def show_about(self):
         """Show about dialog"""
-        about_text = """SmartReader v1.0.0
+        about_text = """SmartReader v1.1.1
 
 AI-Powered Book Assistant
 
 Features:
 - Query any PDF book locally
 - 100% private and offline
+- Permanent cache system
 - Powered by Ollama and RAG
 
 Built with Python, Tkinter, and Ollama
@@ -549,30 +552,61 @@ Built with Python, Tkinter, and Ollama
         self.add_system_message(f"Loading book: {self.current_book}")
         self.add_system_message("⏳ Indexing... (this only happens once per book)")
         
-        # Progress callback
-        def update_progress(progress, status):
-            self.root.after(0, lambda: self.progress.config(value=progress))
-            self.root.after(0, lambda: self.progress_text_label.config(text=status))
-            self.root.after(0, lambda: self.status_bar_label.config(text=status))
+        # Progress callback - FLEXIBLE SIGNATURE
+        def update_progress(*args):
+            if len(args) == 2:
+                # Called as: update_progress(percentage, message)
+                progress_percent, message = args
+            elif len(args) == 3:
+                # Called as: update_progress(current, total, message)
+                current, total, message = args
+                progress_percent = int((current / total) * 100) if total > 0 else 0
+            else:
+                return  # Invalid call
+            
+            self.root.after(0, lambda: self.progress.config(value=progress_percent))
+            self.root.after(0, lambda: self.progress_text_label.config(text=message))
+            self.root.after(0, lambda: self.status_bar_label.config(text=message))
         
         # Index in background thread
         def index_book():
             try:
                 pdf_path = self.current_book_path
                 
+                # Ensure RAG system exists
                 if not self.rag:
+                    print("⚠️ RAG system was None, creating new instance...")
                     self.rag = BookRAGSystem(model_name="llama3.2")
                 
+                print("="*80)
                 print(f"📦 Cache directory: {self.rag.cache_dir}")
                 print(f"📄 PDF path: {pdf_path}")
+                print(f"📋 Is cached: {self.rag.is_cached(pdf_path)}")
+                print(f"📊 Index built before: {self.rag.index_built}")
+                print("="*80)
                 
-                # Build index with automatic caching
+                # Build index (handles caching automatically)
                 self.rag.build_index(pdf_path, progress_callback=update_progress)
                 
+                print("="*80)
+                print(f"✓ Index built after: {self.rag.index_built}")
+                print(f"✓ Number of chunks: {len(self.rag.chunks)}")
+                if len(self.rag.chunks) > 0:
+                    print(f"✓ First chunk has embedding: {self.rag.chunks[0].embedding is not None}")
+                print("="*80)
+                
+                # Verify before calling complete
+                if not self.rag.index_built:
+                    raise Exception("Index failed to build - index_built flag is False")
+                
+                if len(self.rag.chunks) == 0:
+                    raise Exception("Index failed to build - no chunks created")
+                
                 self.root.after(0, self.on_index_complete)
+                
             except Exception as error:
                 error_msg = str(error)
-                print(f"ERROR during indexing: {error_msg}")
+                print(f"❌ ERROR during indexing: {error_msg}")
                 import traceback
                 traceback.print_exc()
                 self.root.after(0, lambda: self.on_index_error(error_msg))
@@ -584,6 +618,12 @@ Built with Python, Tkinter, and Ollama
         """Called when indexing is complete"""
         self.is_indexing = False
         self.progress.config(value=100)
+        
+        # Verify index is actually built
+        if not self.rag or not self.rag.index_built:
+            print("❌ ERROR: Index should be built but index_built is False!")
+            self.on_index_error("Index was not properly built")
+            return
         
         # Hide progress after a moment
         self.root.after(2000, lambda: self.progress.pack_forget())
@@ -625,7 +665,14 @@ Built with Python, Tkinter, and Ollama
         if not question:
             return
         
+        # Debug check
+        print(f"📝 Asking question: {question}")
+        print(f"📊 RAG exists: {self.rag is not None}")
+        print(f"📊 Index built: {self.rag.index_built if self.rag else 'N/A'}")
+        print(f"📊 Chunks loaded: {len(self.rag.chunks) if self.rag else 0}")
+        
         if not self.rag or not self.rag.index_built:
+            print("❌ ERROR: No book loaded or index not built!")
             messagebox.showwarning("No Book Loaded", "Please load a PDF book first.")
             return
         
@@ -648,6 +695,9 @@ Built with Python, Tkinter, and Ollama
                 self.root.after(0, lambda: self.on_query_complete(result))
             except Exception as error:
                 error_msg = str(error)
+                print(f"ERROR during query: {error_msg}")
+                import traceback
+                traceback.print_exc()
                 self.root.after(0, lambda: self.on_query_error(error_msg))
         
         thread = threading.Thread(target=query_book, daemon=True)
