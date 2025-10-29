@@ -1,14 +1,15 @@
 """
 ollama_book_rag.py - RAG system for querying large PDF books
-Handles 900+ page documents with topic-specific retrieval
+Features permanent cache in user AppData directory
 """
 
 import sys
 import os
 import re
 import json
+import hashlib
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional, Callable
 import numpy as np
 import pickle
 
@@ -17,7 +18,6 @@ try:
     import requests
 except ImportError:
     import subprocess
-    import sys
     print("Installing required packages...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "PyPDF2", "requests", "numpy"])
     import PyPDF2
@@ -26,7 +26,8 @@ except ImportError:
 
 class TextChunk:
     """Represents a chunk of text from the book"""
-    def __init__(self, text, page_number, chunk_id, embedding=None, metadata=None):
+    
+    def __init__(self, text: str, page_number: int, chunk_id: int, embedding=None, metadata=None):
         self.text = text
         self.page_number = page_number
         self.chunk_id = chunk_id
@@ -39,6 +40,7 @@ class BookRAGSystem:
     RAG (Retrieval-Augmented Generation) system for large books
     
     Features:
+    - Permanent cache in user AppData directory
     - Indexes entire book into searchable chunks
     - Uses embeddings for semantic search
     - Retrieves only relevant sections for a query
@@ -50,7 +52,7 @@ class BookRAGSystem:
         model_name: str = "llama3.2",
         embedding_model: str = "nomic-embed-text",
         ollama_host: str = "http://localhost:11434"
-        ):
+    ):
         self.model_name = model_name
         self.embedding_model = embedding_model
         self.ollama_host = ollama_host
@@ -59,11 +61,45 @@ class BookRAGSystem:
         self.chunks = []
         self.index_built = False
         
+        # Set permanent cache directory
+        self.cache_dir = self._get_cache_directory()
+        
         self.check_models()
-
-    def get_default_cache_path(self, pdf_path: str) -> str:
+    
+    def _get_cache_directory(self) -> str:
         """
-        Generate default cache file path for a given PDF
+        Get permanent cache directory based on platform
+        
+        Returns:
+            Path to cache directory
+        """
+        if sys.platform == 'win32':
+            # Windows: AppData\Roaming\SmartReader\cache
+            cache_dir = os.path.join(os.environ.get('APPDATA', ''), 'SmartReader', 'cache')
+        elif sys.platform == 'darwin':
+            # macOS: ~/Library/Application Support/SmartReader/cache
+            cache_dir = os.path.expanduser('~/Library/Application Support/SmartReader/cache')
+        else:
+            # Linux: ~/.config/smartreader/cache
+            cache_dir = os.path.expanduser('~/.config/smartreader/cache')
+        
+        # Create directory if it doesn't exist
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            print(f"✓ Cache directory: {cache_dir}")
+        except Exception as e:
+            print(f"Warning: Could not create cache directory: {e}")
+            # Fallback to temp directory
+            import tempfile
+            cache_dir = os.path.join(tempfile.gettempdir(), 'SmartReader', 'cache')
+            os.makedirs(cache_dir, exist_ok=True)
+            print(f"✓ Using fallback cache: {cache_dir}")
+        
+        return cache_dir
+    
+    def get_cache_path(self, pdf_path: str) -> str:
+        """
+        Generate cache file path for a given PDF
         
         Args:
             pdf_path: Path to PDF file
@@ -71,23 +107,104 @@ class BookRAGSystem:
         Returns:
             Full path to cache file
         """
-        # Create cache directory next to the script
-        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache')
-        os.makedirs(cache_dir, exist_ok=True)
+        # Create unique hash based on file path and modification time
+        file_stat = os.stat(pdf_path)
+        unique_string = f"{pdf_path}_{file_stat.st_size}_{file_stat.st_mtime}"
+        file_hash = hashlib.md5(unique_string.encode()).hexdigest()
         
-        # Generate cache filename
+        # Use filename plus hash for cache name
         pdf_name = Path(pdf_path).stem
-        # Clean filename for cache (remove special characters)
+        # Clean filename (remove special characters)
         safe_name = "".join(c for c in pdf_name if c.isalnum() or c in (' ', '-', '_')).strip()
-        safe_name = safe_name.replace(' ', '_')  # Replace spaces with underscores
-        cache_filename = f"{safe_name}_index.pkl"
+        safe_name = safe_name.replace(' ', '_')
         
-        return os.path.join(cache_dir, cache_filename)
+        cache_filename = f"{safe_name}_{file_hash[:8]}.pkl"
+        
+        return os.path.join(self.cache_dir, cache_filename)
+    
+    def is_cached(self, pdf_path: str) -> bool:
+        """
+        Check if a PDF has been cached
+        
+        Args:
+            pdf_path: Path to the PDF file
+            
+        Returns:
+            True if cached, False otherwise
+        """
+        cache_path = self.get_cache_path(pdf_path)
+        return os.path.exists(cache_path)
+    
+    def save_cache(self, pdf_path: str):
+        """
+        Save current index to cache
+        
+        Args:
+            pdf_path: Path to the PDF file
+        """
+        cache_path = self.get_cache_path(pdf_path)
+        
+        try:
+            with open(cache_path, 'wb') as f:
+                pickle.dump(self.chunks, f)
+            print(f"✓ Cache saved: {os.path.basename(cache_path)}")
+        except Exception as e:
+            print(f"Warning: Could not save cache: {e}")
+    
+    def load_cache(self, pdf_path: str) -> bool:
+        """
+        Load index from cache
+        
+        Args:
+            pdf_path: Path to the PDF file
+            
+        Returns:
+            True if successfully loaded, False otherwise
+        """
+        cache_path = self.get_cache_path(pdf_path)
+        
+        try:
+            with open(cache_path, 'rb') as f:
+                self.chunks = pickle.load(f)
+            
+            self.index_built = True
+            print(f"✓ Loaded {len(self.chunks)} chunks from cache")
+            return True
+        except Exception as e:
+            print(f"Warning: Could not load cache: {e}")
+            return False
+    
+    def get_cache_stats(self) -> Tuple[str, int, float]:
+        """
+        Get cache statistics
+        
+        Returns:
+            Tuple of (cache_dir, num_files, total_size_mb)
+        """
+        if not os.path.exists(self.cache_dir):
+            return self.cache_dir, 0, 0.0
+        
+        files = [f for f in os.listdir(self.cache_dir) if f.endswith('.pkl')]
+        total_size = sum(
+            os.path.getsize(os.path.join(self.cache_dir, f))
+            for f in files
+        )
+        
+        size_mb = total_size / (1024 * 1024)
+        return self.cache_dir, len(files), size_mb
+    
+    def clear_cache(self):
+        """Clear all cached files"""
+        if os.path.exists(self.cache_dir):
+            import shutil
+            shutil.rmtree(self.cache_dir)
+            os.makedirs(self.cache_dir)
+            print("✓ Cache cleared")
     
     def check_models(self):
         """Check if required models are available"""
         try:
-            response = requests.get(f"{self.ollama_host}/api/tags")
+            response = requests.get(f"{self.ollama_host}/api/tags", timeout=5)
             models = [m['name'] for m in response.json().get('models', [])]
             
             if self.embedding_model not in models:
@@ -99,9 +216,13 @@ class BookRAGSystem:
         except Exception as e:
             print(f"Warning: Could not verify models: {e}")
     
-    def extract_text_with_pages(self, pdf_path: str) -> List[Tuple[int, str]]:
+    def extract_text_with_pages(self, pdf_path: str, progress_callback: Optional[Callable] = None) -> List[Tuple[int, str]]:
         """
         Extract text from PDF, keeping track of page numbers
+        
+        Args:
+            pdf_path: Path to PDF file
+            progress_callback: Optional callback(current, total, message)
         
         Returns:
             List of (page_number, text) tuples
@@ -117,6 +238,9 @@ class BookRAGSystem:
                 print(f"Total pages: {total_pages}")
                 
                 for page_num, page in enumerate(pdf_reader.pages, 1):
+                    if progress_callback:
+                        progress_callback(page_num, total_pages, f"Extracting page {page_num}/{total_pages}")
+                    
                     text = page.extract_text()
                     if text.strip():
                         pages_text.append((page_num, text))
@@ -135,7 +259,8 @@ class BookRAGSystem:
         self, 
         pages_text: List[Tuple[int, str]], 
         chunk_size: int = 1000,
-        overlap: int = 200
+        overlap: int = 200,
+        progress_callback: Optional[Callable] = None
     ) -> List[TextChunk]:
         """
         Split text into overlapping chunks for better context
@@ -144,12 +269,18 @@ class BookRAGSystem:
             pages_text: List of (page_num, text) tuples
             chunk_size: Characters per chunk
             overlap: Overlap between chunks
+            progress_callback: Optional callback(current, total, message)
         """
         print(f"✂️  Creating chunks (size={chunk_size}, overlap={overlap})...")
         chunks = []
         chunk_id = 0
         
-        for page_num, page_text in pages_text:
+        total_pages = len(pages_text)
+        
+        for idx, (page_num, page_text) in enumerate(pages_text):
+            if progress_callback:
+                progress_callback(idx + 1, total_pages, f"Chunking page {idx + 1}/{total_pages}")
+            
             # Split by paragraphs first
             paragraphs = page_text.split('\n\n')
             current_chunk = ""
@@ -199,7 +330,8 @@ class BookRAGSystem:
                 json={
                     "model": self.embedding_model,
                     "prompt": text
-                }
+                },
+                timeout=30
             )
             
             if response.status_code == 200:
@@ -211,33 +343,30 @@ class BookRAGSystem:
             print(f"Error: {e}")
             return []
     
-    def build_index(self, pdf_path: str, cache_path: str = None, progress_callback=None):
+    def build_index(self, pdf_path: str, progress_callback: Optional[Callable] = None):
         """
-        Build searchable index of the entire book
+        Build searchable index of the entire book with automatic caching
         
         Args:
             pdf_path: Path to PDF file
-            cache_path: Optional path to save/load index cache
-            progress_callback: Function to call with progress updates (progress, status_text)
+            progress_callback: Optional callback(progress, status_text)
         """
         # Check if cache exists
-        if cache_path and os.path.exists(cache_path):
+        if self.is_cached(pdf_path):
             if progress_callback:
                 progress_callback(100, "Loading cached index...")
-            print(f"📦 Loading cached index from: {cache_path}")
-            with open(cache_path, 'rb') as f:
-                self.chunks = pickle.load(f)
-            self.index_built = True
-            print(f"✓ Loaded {len(self.chunks)} chunks from cache")
-            if progress_callback:
-                progress_callback(100, "Cache loaded successfully!")
-            return
+            
+            print(f"📦 Loading cached index...")
+            if self.load_cache(pdf_path):
+                if progress_callback:
+                    progress_callback(100, "Cache loaded successfully!")
+                return
         
         # Extract and chunk text
         if progress_callback:
             progress_callback(10, "Extracting text from PDF...")
         
-        pages_text = self.extract_text_with_pages(pdf_path)
+        pages_text = self.extract_text_with_pages(pdf_path, progress_callback)
         if not pages_text:
             print("Failed to extract text")
             return
@@ -245,7 +374,7 @@ class BookRAGSystem:
         if progress_callback:
             progress_callback(25, "Creating text chunks...")
         
-        self.chunks = self.create_chunks(pages_text)
+        self.chunks = self.create_chunks(pages_text, progress_callback=progress_callback)
         
         # Generate embeddings for each chunk
         print("🧮 Generating embeddings for semantic search...")
@@ -270,16 +399,11 @@ class BookRAGSystem:
         print("✓ Index built successfully")
         
         # Save cache
-        if cache_path:
-            if progress_callback:
-                progress_callback(95, "Saving cache...")
-            
-            print(f"💾 Saving index cache to: {cache_path}")
-            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-            with open(cache_path, 'wb') as f:
-                pickle.dump(self.chunks, f)
-            print("✓ Cache saved")
-    
+        if progress_callback:
+            progress_callback(95, "Saving cache...")
+        
+        self.save_cache(pdf_path)
+        
         if progress_callback:
             progress_callback(100, "Indexing complete!")
     
@@ -289,7 +413,7 @@ class BookRAGSystem:
         b_array = np.array(b)
         
         return np.dot(a_array, b_array) / (
-            np.linalg.norm(a_array) * np.linalg.norm(b_array)
+            np.linalg.norm(a_array) * np.linalg.norm(b_array) + 1e-10
         )
     
     def search_relevant_chunks(
@@ -301,7 +425,7 @@ class BookRAGSystem:
         Search for chunks most relevant to the query
         
         Args:
-            query: Search query (e.g., "thalamus")
+            query: Search query
             top_k: Number of top results to return
             
         Returns:
@@ -373,20 +497,20 @@ class BookRAGSystem:
         # Create prompt
         prompt = f"""You are a helpful assistant analyzing a book. Based on the following excerpts from the book, answer the user's question comprehensively.
 
-        Question: {query}
+Question: {query}
 
-        Relevant excerpts from the book:
+Relevant excerpts from the book:
 
-        {context}
+{context}
 
-        Instructions:
-        1. Provide a comprehensive answer based on the excerpts above
-        2. Cite page numbers when referencing specific information
-        3. If the information spans multiple pages, mention the page range
-        4. If the excerpts don't fully answer the question, acknowledge what's covered and what's not
-        5. Be specific and detailed in your response
+Instructions:
+1. Provide a comprehensive answer based on the excerpts above
+2. Cite page numbers when referencing specific information
+3. If the information spans multiple pages, mention the page range
+4. If the excerpts don't fully answer the question, acknowledge what's covered and what's not
+5. Be specific and detailed in your response
 
-        Answer:"""
+Answer:"""
         
         print("💭 Generating answer...")
         
@@ -402,7 +526,8 @@ class BookRAGSystem:
                         "temperature": 0.3,
                         "num_predict": 2000
                     }
-                }
+                },
+                timeout=60
             )
             
             if response.status_code == 200:
@@ -418,7 +543,7 @@ class BookRAGSystem:
         Main query interface - search and generate answer
         
         Args:
-            question: User's question (e.g., "What does the book say about the thalamus?")
+            question: User's question
             top_k: Number of relevant chunks to retrieve
             
         Returns:
@@ -486,9 +611,8 @@ def main():
         print(f"Error: File not found: {pdf_path}")
         return
     
-    # Build index (with caching)
-    cache_path = f"./cache/{Path(pdf_path).stem}_index.pkl"
-    rag.build_index(pdf_path, cache_path=cache_path)
+    # Build index (with automatic caching)
+    rag.build_index(pdf_path)
     
     print("\n" + "="*80)
     print("Index built! You can now query the book.")
@@ -532,49 +656,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-'''
-FIRST INDEX THE BOOK:
-# First time: Build index (15 min for 900 pages)
-python3 ollama_book_rag.py neuroscience_textbook.pdf
-
-# Subsequent queries (5-10 seconds each)
-# The index is cached, so this is instant next time
-
-----
-
-QUERY ABOUT SPECIFIC TOPIC (Thalamus example)
-from ollama_book_rag import BookRAGSystem
-
-# Initialize
-rag = BookRAGSystem()
-
-# Build index (cached after first time)
-rag.build_index("neuroscience.pdf", cache_path="./cache/neuro_index.pkl")
-
-# Query
-result = rag.query("What are the functions of the thalamus?")
-
-print(result['answer'])
-# Output: "According to the book, the thalamus serves as a relay station...
-#          (Page 234) The thalamus processes sensory information...
-#          (Pages 235-237) Clinical studies show..."
-
-print(f"Sources: Pages {result['pages']}")
-# Output: Sources: Pages [234, 235, 236, 237, 412, 413]
-
-----
-
-MULTIPLE QUERY EXAMPLE:
-# Build index once
-rag.build_index("neuroscience.pdf", cache_path="./cache/neuro.pkl")
-
-# Ask multiple questions (each takes ~5 seconds)
-q1 = rag.query("What is the role of the thalamus in consciousness?")
-q2 = rag.query("How does the thalamus process sensory information?")
-q3 = rag.query("What are thalamic lesions?")
-q4 = rag.query("Describe thalamocortical connections")
-
-# All queries use the same cached index!
-'''

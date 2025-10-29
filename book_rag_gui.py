@@ -1,6 +1,6 @@
 """
-Professional Desktop GUI for Ollama Book RAG
-A beautiful, user-friendly interface for querying large books locally
+Professional Desktop GUI for SmartReader
+Beautiful, user-friendly interface for querying large books locally with permanent cache
 """
 
 import tkinter as tk
@@ -14,6 +14,7 @@ from ollama_book_rag import BookRAGSystem
 
 class ModernButton(tk.Button):
     """Custom styled button with hover effects"""
+    
     def __init__(self, parent, **kwargs):
         super().__init__(
             parent,
@@ -70,11 +71,53 @@ class BookRAGApp:
         # Configure root window
         self.root.configure(bg=self.colors['bg_light'])
         
+        # Setup menu bar first
+        self.create_menu()
+        
         # Setup UI
         self.setup_ui()
         
+        # Initialize RAG system
+        self.initialize_rag()
+        
         # Check Ollama on startup
         self.root.after(100, self.check_ollama)
+    
+    def initialize_rag(self):
+        """Initialize RAG system on startup"""
+        try:
+            self.rag = BookRAGSystem(model_name="llama3.2")
+            print(f"✓ RAG system initialized with cache at: {self.rag.cache_dir}")
+        except Exception as e:
+            print(f"Warning: Could not initialize RAG: {e}")
+    
+    def create_menu(self):
+        """Create menu bar"""
+        menubar = tk.Menu(self.root)
+        
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="Load PDF Book", command=self.upload_pdf, accelerator="Ctrl+O")
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.root.quit, accelerator="Ctrl+Q")
+        menubar.add_cascade(label="File", menu=file_menu)
+        
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(label="Cache Location", command=self.show_cache_location)
+        tools_menu.add_command(label="Clear Cache", command=self.clear_cache_dialog)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="About", command=self.show_about)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        
+        self.root.config(menu=menubar)
+        
+        # Bind keyboard shortcuts
+        self.root.bind('<Control-o>', lambda e: self.upload_pdf())
+        self.root.bind('<Control-q>', lambda e: self.root.quit())
     
     def setup_ui(self):
         """Create the user interface"""
@@ -185,10 +228,19 @@ class BookRAGApp:
         # Progress bar
         self.progress = ttk.Progressbar(
             left_panel,
-            mode='indeterminate',
+            mode='determinate',
             length=250
         )
         # Don't pack by default - only show when needed
+        
+        # Progress text label (create but don't pack)
+        self.progress_text_label = tk.Label(
+            left_panel,
+            text="",
+            font=("Segoe UI", 8),
+            bg=self.colors['white'],
+            fg=self.colors['text_medium']
+        )
         
         # Info section
         info_frame = tk.Frame(left_panel, bg=self.colors['bg_light'])
@@ -393,6 +445,67 @@ https://ollama.com/download"""
         self.add_system_message("⚠️ Ollama not detected. Please start Ollama first.")
         self.upload_btn.config(state=tk.DISABLED)
     
+    def show_cache_location(self):
+        """Show cache location and statistics"""
+        if not self.rag:
+            messagebox.showinfo("Cache Info", "RAG system not initialized yet.")
+            return
+        
+        cache_dir, num_books, size_mb = self.rag.get_cache_stats()
+        
+        messagebox.showinfo(
+            "Cache Information",
+            f"Cache Directory:\n{cache_dir}\n\n"
+            f"Cached Books: {num_books}\n"
+            f"Total Size: {size_mb:.2f} MB\n\n"
+            "Cache persists even if you move the application.\n"
+            "You can manually delete this folder to free up space."
+        )
+    
+    def clear_cache_dialog(self):
+        """Clear all cached book data"""
+        if not self.rag:
+            messagebox.showinfo("Cache Info", "RAG system not initialized yet.")
+            return
+        
+        cache_dir, num_books, size_mb = self.rag.get_cache_stats()
+        
+        if num_books == 0:
+            messagebox.showinfo("Cache Empty", "No cached books to clear.")
+            return
+        
+        response = messagebox.askyesno(
+            "Clear Cache",
+            f"This will delete {num_books} cached book(s) ({size_mb:.2f} MB).\n\n"
+            "Books will need to be re-indexed when loaded again.\n\n"
+            "Continue?"
+        )
+        
+        if response:
+            try:
+                self.rag.clear_cache()
+                messagebox.showinfo("Success", "Cache cleared successfully!")
+                self.add_system_message("✓ Cache cleared")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to clear cache:\n{e}")
+    
+    def show_about(self):
+        """Show about dialog"""
+        about_text = """SmartReader v1.0.0
+
+AI-Powered Book Assistant
+
+Features:
+- Query any PDF book locally
+- 100% private and offline
+- Powered by Ollama and RAG
+
+Built with Python, Tkinter, and Ollama
+
+© 2025"""
+        
+        messagebox.showinfo("About SmartReader", about_text)
+    
     def upload_pdf(self):
         """Handle PDF upload"""
         filepath = filedialog.askopenfilename(
@@ -416,7 +529,7 @@ https://ollama.com/download"""
             if not response:
                 return
         
-        # Store filepath as instance variable
+        # Store filepath
         self.current_book_path = filepath
         self.current_book = Path(filepath).name
         self.book_name_label.config(text=self.current_book)
@@ -426,25 +539,15 @@ https://ollama.com/download"""
         self.upload_btn.config(state=tk.DISABLED)
         self.status_label.config(text="● Indexing...", fg=self.colors['warning'])
         
-        # Show progress bar with determinate mode
-        self.progress.config(mode='determinate')
-        self.progress['value'] = 0
-        self.progress.pack(padx=15, pady=10, fill=tk.X)
-        
-        # Add progress text label
-        self.progress_text_label = tk.Label(
-            self.progress.master,
-            text="Starting indexing...",
-            font=("Segoe UI", 8),
-            bg=self.colors['bg_light'],
-            fg=self.colors['text_medium']
-        )
-        self.progress_text_label.pack(padx=15, pady=(0, 5))
+        # Show progress bar
+        self.progress.config(mode='determinate', value=0)
+        self.progress.pack(padx=15, pady=5, fill=tk.X)
+        self.progress_text_label.pack(padx=15, pady=(0, 10))
         
         self.status_bar_label.config(text="Indexing book... This may take 10-15 minutes for large books")
         
         self.add_system_message(f"Loading book: {self.current_book}")
-        self.add_system_message("⏳ Indexing... (this only happens once)")
+        self.add_system_message("⏳ Indexing... (this only happens once per book)")
         
         # Progress callback
         def update_progress(progress, status):
@@ -455,17 +558,16 @@ https://ollama.com/download"""
         # Index in background thread
         def index_book():
             try:
-                # Use self.current_book_path instead of filepath
                 pdf_path = self.current_book_path
                 
-                self.rag = BookRAGSystem(model_name="llama3.2")
+                if not self.rag:
+                    self.rag = BookRAGSystem(model_name="llama3.2")
                 
-                # Use default cache path (in ./cache folder)
-                cache_path = self.rag.get_default_cache_path(pdf_path)
-                print(f"📦 Cache path: {cache_path}")
+                print(f"📦 Cache directory: {self.rag.cache_dir}")
                 print(f"📄 PDF path: {pdf_path}")
                 
-                self.rag.build_index(pdf_path, cache_path=cache_path, progress_callback=update_progress)
+                # Build index with automatic caching
+                self.rag.build_index(pdf_path, progress_callback=update_progress)
                 
                 self.root.after(0, self.on_index_complete)
             except Exception as error:
@@ -473,11 +575,11 @@ https://ollama.com/download"""
                 print(f"ERROR during indexing: {error_msg}")
                 import traceback
                 traceback.print_exc()
-                self.root.after(0, lambda msg=error_msg: self.on_index_error(msg))
+                self.root.after(0, lambda: self.on_index_error(error_msg))
         
         thread = threading.Thread(target=index_book, daemon=True)
         thread.start()
-        
+    
     def on_index_complete(self):
         """Called when indexing is complete"""
         self.is_indexing = False
@@ -485,8 +587,7 @@ https://ollama.com/download"""
         
         # Hide progress after a moment
         self.root.after(2000, lambda: self.progress.pack_forget())
-        if hasattr(self, 'progress_text_label'):
-            self.root.after(2000, lambda: self.progress_text_label.pack_forget())
+        self.root.after(2000, lambda: self.progress_text_label.pack_forget())
         
         self.upload_btn.config(state=tk.NORMAL)
         self.question_input.config(state=tk.NORMAL)
@@ -503,8 +604,8 @@ https://ollama.com/download"""
     def on_index_error(self, error):
         """Called when indexing fails"""
         self.is_indexing = False
-        self.progress.stop()
         self.progress.pack_forget()
+        self.progress_text_label.pack_forget()
         
         self.upload_btn.config(state=tk.NORMAL)
         self.status_label.config(text="● Error", fg=self.colors['danger'])
@@ -524,7 +625,7 @@ https://ollama.com/download"""
         if not question:
             return
         
-        if not self.rag:
+        if not self.rag or not self.rag.index_built:
             messagebox.showwarning("No Book Loaded", "Please load a PDF book first.")
             return
         
@@ -544,10 +645,10 @@ https://ollama.com/download"""
         def query_book():
             try:
                 result = self.rag.query(question, top_k=10)
-                self.root.after(0, lambda res=result: self.on_query_complete(res))  # Fixed lambda
-            except Exception as error:  # Changed 'e' to 'error'
+                self.root.after(0, lambda: self.on_query_complete(result))
+            except Exception as error:
                 error_msg = str(error)
-                self.root.after(0, lambda msg=error_msg: self.on_query_error(msg))  # Fixed lambda
+                self.root.after(0, lambda: self.on_query_error(error_msg))
         
         thread = threading.Thread(target=query_book, daemon=True)
         thread.start()
@@ -577,7 +678,7 @@ https://ollama.com/download"""
     
     def use_example(self, question):
         """Use an example question"""
-        if self.rag and not self.is_querying:
+        if self.rag and self.rag.index_built and not self.is_querying:
             self.question_input.delete(0, tk.END)
             self.question_input.insert(0, question)
             self.ask_question()
@@ -634,7 +735,6 @@ https://ollama.com/download"""
         self.messages.see(tk.END)
         self.messages.config(state=tk.DISABLED)
 
-    
 
 def main():
     """Main entry point"""
