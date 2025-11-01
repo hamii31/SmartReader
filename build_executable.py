@@ -11,8 +11,8 @@ print("🔨 Building SmartReader Executable")
 print("=" * 70)
 
 APP_NAME = "SmartReader"
-VERSION = "1.1.1"
-ICON = "icon.ico"  # Optional
+VERSION = "1.1.2"
+ICON = "icon.ico" 
 
 # Check if icon exists
 if not os.path.exists(ICON):
