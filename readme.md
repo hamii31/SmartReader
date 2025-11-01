@@ -33,6 +33,11 @@ SmartReader is a Windows desktop application that transforms how you interact wi
 - **Clean Interface** - Intuitive design focused on productivity
 - **No Configuration** - Works out of the box
 
+## Automated Setup
+- Setup wizard downloads models automatically
+- No manual terminal commands needed
+- One-click installation experience
+
 ## 💾 Data Storage & Cache Management
 
 SmartReader stores cached book indexes in a permanent location:
@@ -60,9 +65,9 @@ Cache files are named uniquely based on PDF content, so:
 
 ## 📥 Download
 
-### Latest Release (v1.1.1)
+### Latest Release (v1.1.2)
 
-**[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.1.1/SmartReader.exe)**
+**[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.1.2/SmartReader.exe)**
 
 *Size: ~25 MB | Platform: Windows 10/11 | License: MIT*
 
@@ -121,7 +126,7 @@ Cache files are named uniquely based on PDF content, so:
 - **Ollama** - Local LLM inference engine
 
 ### AI/ML Components
-- **llama3.2** - Language model (2B parameters)
+- **llama3.2:1b** - Language model (1B parameters)
 - **nomic-embed-text** - Text embedding model
 - **RAG Architecture** - Retrieval-Augmented Generation
 
@@ -173,7 +178,7 @@ graph LR
    - Find top-K relevant chunks via cosine similarity
 
 6. **Answer Generation**
-   - Feed context to llama3.2
+   - Feed context to llama3.2:1b
    - Generate coherent answers with citations
    - Return page references for verification
 
@@ -208,7 +213,7 @@ venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 
 # Download required models
-ollama pull llama3.2
+ollama pull llama3.2:1b
 ollama pull nomic-embed-text
 
 # Run application
