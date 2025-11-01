@@ -1,6 +1,6 @@
 """
 Setup Wizard - First-time setup for SmartReader
-Clean, simple, and functional
+Automated installation of Ollama and AI models
 """
 
 import tkinter as tk
@@ -184,7 +184,7 @@ class SetupWizard:
         info_text = """This setup wizard will:
 
   ✓  Install Ollama (AI engine)
-  ✓  Download language models (~2-3 GB)
+  ✓  Download language models (~1.5 GB)
   ✓  Configure everything for you
 
 After setup, you'll be able to:
@@ -203,8 +203,8 @@ After setup, you'll be able to:
         
         requirements = [
             "• Windows 10 or Windows 11",
-            "• 8GB RAM minimum (16GB recommended)",
-            "• 10GB free disk space",
+            "• 4GB RAM minimum (8GB recommended)",
+            "• 5GB free disk space",
             "• Internet connection (for initial setup only)",
             "• Estimated setup time: 10-15 minutes"
         ]
@@ -259,8 +259,9 @@ After setup, you'll be able to:
             self.ollama_installed = (result.returncode == 0)
             
             if self.ollama_installed:
+                version = result.stdout.decode().strip()
                 self.root.after(0, lambda: self.ollama_status.config(
-                    text="✓  Ollama is installed", fg=self.colors['success']))
+                    text=f"✓  Ollama is installed ({version})", fg=self.colors['success']))
             else:
                 self.root.after(0, lambda: self.ollama_status.config(
                     text="✗  Ollama is not installed", fg=self.colors['danger']))
@@ -276,16 +277,18 @@ After setup, you'll be able to:
                 result = subprocess.run(['ollama', 'list'], capture_output=True, timeout=5)
                 output = result.stdout.decode()
                 
-                has_llama = 'llama3.2' in output
+                # Check for llama3.2:1b specifically
+                has_llama = 'llama3.2:1b' in output or 'llama3.2' in output
                 has_embed = 'nomic-embed-text' in output
                 self.models_downloaded = has_llama and has_embed
                 
                 if self.models_downloaded:
                     self.root.after(0, lambda: self.models_status.config(
-                        text="✓  AI models are installed", fg=self.colors['success']))
+                        text="✓  AI models are installed (llama3.2:1b, nomic-embed-text)", 
+                        fg=self.colors['success']))
                 else:
                     missing = []
-                    if not has_llama: missing.append('llama3.2')
+                    if not has_llama: missing.append('llama3.2:1b')
                     if not has_embed: missing.append('nomic-embed-text')
                     self.root.after(0, lambda m=missing: self.models_status.config(
                         text=f"✗  Missing models: {', '.join(m)}", fg=self.colors['danger']))
@@ -352,36 +355,136 @@ After setup, you'll be able to:
                  bg=self.colors['primary'], fg='white',
                  padx=20, pady=10, cursor='hand2').pack(pady=10)
         
+        tk.Label(self.scrollable_frame, text="💡 After installing, click Next",
+                font=('Arial', 10, 'italic'), bg='white', fg='#666').pack(pady=20)
+        
         self.ollama_installed = True  # Assume user will install
     
-    # ==================== STEP 4: DOWNLOAD MODELS ====================
+    # ==================== STEP 4: DOWNLOAD MODELS (AUTOMATED) ====================
     def step_download_models(self):
         tk.Label(self.scrollable_frame, text="Download AI Models 🧠",
                 font=('Arial', 20, 'bold'), bg='white').pack(pady=(30, 15))
         
-        tk.Label(self.scrollable_frame, text="This will download ~2-3 GB of AI models",
-                font=('Arial', 11), bg='white', fg='#666').pack()
+        tk.Label(self.scrollable_frame, text="Downloading optimized models (~1.5 GB total)",
+                font=('Arial', 11), bg='white', fg='#666').pack(pady=(0, 20))
         
-        # Instructions
-        info = tk.Frame(self.scrollable_frame, bg='#fff9e6', relief=tk.SOLID, borderwidth=1)
-        info.pack(fill=tk.X, pady=30)
+        # Info box
+        info = tk.Frame(self.scrollable_frame, bg='#e8f4f8', relief=tk.SOLID, borderwidth=1)
+        info.pack(fill=tk.X, pady=15)
         
-        instructions = """Please download models manually:
+        info_text = """Models being downloaded:
 
-1. Open Command Prompt or PowerShell
-2. Run: ollama pull llama3.2
-3. Wait for download (~2 GB)
-4. Run: ollama pull nomic-embed-text
-5. Wait for download (~300 MB)
-6. Come back here and click Next"""
+  •  llama3.2:1b (1.3 GB) - Fast generation model
+  •  nomic-embed-text (274 MB) - Semantic search
+
+This may take 5-10 minutes depending on your internet speed."""
         
-        tk.Label(info, text=instructions, font=('Arial', 11),
-                bg='#fff9e6', justify=tk.LEFT).pack(padx=25, pady=20)
+        tk.Label(info, text=info_text, font=('Arial', 10),
+                bg='#e8f4f8', justify=tk.LEFT).pack(padx=25, pady=15)
         
-        tk.Label(self.scrollable_frame, text="💡 Tip: Keep the terminal window open",
-                font=('Arial', 10, 'italic'), bg='white', fg='#666').pack()
+        # Status area
+        status_frame = tk.Frame(self.scrollable_frame, bg='#f5f5f5',
+                               relief=tk.SOLID, borderwidth=1)
+        status_frame.pack(fill=tk.X, pady=20)
         
-        self.models_downloaded = True  # Assume user will download
+        self.download_status = tk.Label(status_frame, text="Preparing to download...",
+                                       font=('Arial', 11, 'bold'), bg='#f5f5f5',
+                                       fg=self.colors['dark'])
+        self.download_status.pack(padx=25, pady=15)
+        
+        self.download_progress = ttk.Progressbar(status_frame, length=500, mode='indeterminate')
+        self.download_progress.pack(padx=25, pady=(0, 15))
+        self.download_progress.start()
+        
+        # Disable buttons during download
+        self.next_button.config(state=tk.DISABLED)
+        self.back_button.config(state=tk.DISABLED)
+        
+        # Start download in background
+        threading.Thread(target=self.download_models_thread, daemon=True).start()
+    
+    def download_models_thread(self):
+        """Download models automatically"""
+        models = [
+            ("llama3.2:1b", "Generation model"),
+            ("nomic-embed-text", "Embedding model")
+        ]
+        
+        for i, (model, description) in enumerate(models, 1):
+            try:
+                # Update status
+                self.root.after(0, lambda m=model, d=description: 
+                    self.download_status.config(
+                        text=f"Downloading {m}\n({d}) - {i}/{len(models)}"
+                    ))
+                
+                # Download model
+                print(f"📥 Pulling {model}...")
+                result = subprocess.run(
+                    ['ollama', 'pull', model],
+                    capture_output=True,
+                    text=True,
+                    timeout=600  # 10 minute timeout
+                )
+                
+                if result.returncode == 0:
+                    print(f"✓ Successfully downloaded {model}")
+                else:
+                    print(f"❌ Failed to download {model}: {result.stderr}")
+                    self.root.after(0, lambda m=model: self.download_failed(m))
+                    return
+                    
+            except subprocess.TimeoutExpired:
+                print(f"❌ Timeout downloading {model}")
+                self.root.after(0, lambda m=model: self.download_failed(m, "timeout"))
+                return
+            except Exception as e:
+                print(f"❌ Error downloading {model}: {e}")
+                self.root.after(0, lambda m=model, err=str(e): self.download_failed(m, err))
+                return
+        
+        # All downloads successful
+        self.root.after(0, self.download_complete)
+    
+    def download_complete(self):
+        """Called when all models are downloaded"""
+        self.download_progress.stop()
+        self.download_status.config(
+            text="✓ All models downloaded successfully!",
+            fg=self.colors['success']
+        )
+        
+        self.models_downloaded = True
+        
+        # Enable next button
+        self.next_button.config(state=tk.NORMAL)
+        self.back_button.config(state=tk.NORMAL)
+        
+        # Auto-advance after 2 seconds
+        self.root.after(2000, lambda: self.show_step(4))
+    
+    def download_failed(self, model, error="unknown"):
+        """Called when download fails"""
+        self.download_progress.stop()
+        self.download_status.config(
+            text=f"❌ Failed to download {model}",
+            fg=self.colors['danger']
+        )
+        
+        error_msg = f"""Failed to download model: {model}
+Error: {error}
+
+Please try:
+1. Check your internet connection
+2. Restart SmartReader setup
+3. Or download manually:
+   - Open Command Prompt
+   - Run: ollama pull {model}"""
+        
+        messagebox.showerror("Download Failed", error_msg)
+        
+        # Enable back button
+        self.back_button.config(state=tk.NORMAL)
     
     # ==================== STEP 5: COMPLETE ====================
     def step_complete(self):
@@ -406,9 +509,10 @@ After setup, you'll be able to:
         features = [
             "✓  Upload any PDF book or document",
             "✓  Ask questions in plain English",
-            "✓  Get instant, cited answers",
+            "✓  Get instant, cited answers (20-30 seconds)",
             "✓  Work completely offline",
-            "✓  100% private - no data leaves your computer"
+            "✓  100% private - no data leaves your computer",
+            "✓  Optimized for fast CPU performance"
         ]
         
         for feature in features:
@@ -420,7 +524,7 @@ After setup, you'll be able to:
                 fg=self.colors['primary']).pack(pady=(30, 0))
         
         # Change Next button to Launch
-        self.next_button.config(text="Launch",
+        self.next_button.config(text="Launch SmartReader",
                                command=self.launch_app,
                                bg=self.colors['success'])
         self.back_button.config(state=tk.DISABLED)

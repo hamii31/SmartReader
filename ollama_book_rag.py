@@ -49,7 +49,7 @@ class BookRAGSystem:
     
     def __init__(
         self, 
-        model_name: str = "llama3.2",
+        model_name: str = "llama3.2:1b",
         embedding_model: str = "nomic-embed-text",
         ollama_host: str = "http://localhost:11434"
     ):
@@ -65,6 +65,9 @@ class BookRAGSystem:
         self.cache_dir = self._get_cache_directory()
         
         self.check_models()
+
+        # Pre-load the generation model
+        self.preload_model()
     
     def _get_cache_directory(self) -> str:
         """
@@ -96,6 +99,39 @@ class BookRAGSystem:
             print(f"✓ Using fallback cache: {cache_dir}")
         
         return cache_dir
+
+    def preload_model(self):
+        """
+        Pre-load the generation model into memory
+        This prevents first-query timeouts
+        """
+        print(f"🔄 Pre-loading model: {self.model_name}...")
+        try:
+            response = requests.post(
+                f"{self.api_url}/generate",
+                json={
+                    "model": self.model_name,
+                    "prompt": "Ready",
+                    "stream": False
+                },
+                timeout=120  # Give it 2 minutes to load
+            )
+            
+            if response.status_code == 200:
+                print(f"✓ Model {self.model_name} loaded and ready")
+                return True
+            else:
+                print(f"⚠️ Model pre-load returned status {response.status_code}")
+                return False
+                
+        except requests.exceptions.Timeout:
+            print(f"⚠️ Model took too long to pre-load (will load on first query)")
+            return False
+            
+        except Exception as e:
+            print(f"⚠️ Could not pre-load model: {e}")
+            print("Model will load on first query instead")
+            return False
     
     def get_cache_path(self, pdf_path: str) -> str:
         """
@@ -468,19 +504,14 @@ class BookRAGSystem:
         self, 
         query: str, 
         context_chunks: List[Tuple[TextChunk, float]],
-        max_context_length: int = 6000
+        max_context_length: int = 4000
     ) -> str:
         """
         Generate answer using relevant context
-        
-        Args:
-            query: User's question
-            context_chunks: Relevant chunks with similarity scores
-            max_context_length: Maximum characters to include in context
-            
-        Returns:
-            Generated answer
         """
+        import time
+        import json
+        
         # Build context from top chunks
         context_parts = []
         current_length = 0
@@ -498,45 +529,121 @@ class BookRAGSystem:
         # Create prompt
         prompt = f"""You are a helpful assistant analyzing a book. Based on the following excerpts from the book, answer the user's question comprehensively.
 
-Question: {query}
+    Question: {query}
 
-Relevant excerpts from the book:
+    Relevant excerpts from the book:
 
-{context}
+    {context}
 
-Instructions:
-1. Provide a comprehensive answer based on the excerpts above
-2. Cite page numbers when referencing specific information
-3. If the information spans multiple pages, mention the page range
-4. If the excerpts don't fully answer the question, acknowledge what's covered and what's not
-5. Be specific and detailed in your response
+    Instructions:
+    1. Provide a comprehensive answer based on the excerpts above
+    2. Cite page numbers when referencing specific information
+    3. If the information spans multiple pages, mention the page range
+    4. If the excerpts don't fully answer the question, acknowledge what's covered and what's not
+    5. Be specific and detailed in your response
 
-Answer:"""
+    Answer:"""
         
-        print("💭 Generating answer...")
+        # print("="*80)
+        # print("💭 GENERATE ANSWER - DEBUG INFO")
+        # print("="*80)
+        # print(f"📊 Query: {query[:100]}...")
+        # print(f"📊 Context length: {len(context)} characters")
+        # print(f"📊 Number of chunks: {len(context_chunks)}")
+        # print(f"📊 Total prompt length: {len(prompt)} characters")
+        # print(f"📊 Model: {self.model_name}")
+        # print(f"📊 API URL: {self.api_url}/generate")
+        # print("="*80)
+        
+        # Prepare request payload
+        payload = {
+            "model": self.model_name,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0.3,
+                "num_predict": 800,
+                "num_ctx": 4096
+            }
+        }
+        
+        # print("📤 Request payload:")
+        # print(f"   Model: {payload['model']}")
+        # print(f"   Prompt length: {len(payload['prompt'])} chars")
+        # print(f"   Stream: {payload['stream']}")
+        # print(f"   Options: {payload['options']}")
+        # print("="*80)
         
         # Call Ollama
         try:
+            # print(f"🔗 Sending POST request to: {self.api_url}/generate")
+            # print(f"⏱️  Timeout: 60 seconds")
+            # print(f"⏱️  Starting at: {time.strftime('%H:%M:%S')}")
+            
+            start_time = time.time()
+            
             response = requests.post(
                 f"{self.api_url}/generate",
-                json={
-                    "model": self.model_name,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.3,
-                        "num_predict": 2000
-                    }
-                },
-                timeout=60
+                json=payload,
+                timeout=180
             )
             
+            elapsed = time.time() - start_time
+            
+            # print(f"✓ Response received!")
+            # print(f"⏱️  Elapsed time: {elapsed:.2f} seconds")
+            # print(f"📊 Status code: {response.status_code}")
+            # print(f"📊 Response size: {len(response.content)} bytes")
+            # print("="*80)
+            
             if response.status_code == 200:
-                return response.json()['response'].strip()
+                result = response.json()
+                answer = result.get('response', '').strip()
+                
+                # print(f"✓ Answer extracted successfully")
+                # print(f"📊 Answer length: {len(answer)} characters")
+                # print(f"📊 First 200 chars: {answer[:200]}...")
+                # print("="*80)
+                
+                return answer
             else:
-                return f"Error: {response.status_code}"
+                error_msg = f"HTTP Error {response.status_code}: {response.text[:500]}"
+                # print(f"❌ {error_msg}")
+                # print("="*80)
+                return error_msg
+        
+        except requests.exceptions.Timeout as e:
+            elapsed = time.time() - start_time
+            # print(f"❌ TIMEOUT after {elapsed:.2f} seconds")
+            # print(f"⏱️  Timeout occurred at: {time.strftime('%H:%M:%S')}")
+            # print("="*80)
+            # print("🔍 TIMEOUT ANALYSIS:")
+            # print(f"   - Prompt was {len(prompt)} characters")
+            # print(f"   - Context had {len(context_chunks)} chunks")
+            # print(f"   - Waited {elapsed:.2f} seconds")
+            # print("="*80)
+            # print("🔧 SUGGESTIONS:")
+            # print("   1. The prompt might be too long")
+            # print("   2. Try reducing top_k in the query")
+            # print("   3. Check 'ollama ps' to see if model is loaded")
+            # print("="*80)
+            return "Error: Request timed out waiting for Ollama response. Try a simpler question or reduce the context."
+        
+        except requests.exceptions.ConnectionError as e:
+            # print(f"❌ CONNECTION ERROR")
+            # print(f"   Error: {e}")
+            # print(f"   Cannot connect to {self.api_url}/generate")
+            # print("="*80)
+            return f"Error: Cannot connect to Ollama at {self.api_url}"
         
         except Exception as e:
+            elapsed = time.time() - start_time
+            # print(f"❌ UNEXPECTED ERROR after {elapsed:.2f} seconds")
+            # print(f"   Error type: {type(e).__name__}")
+            # print(f"   Error message: {str(e)}")
+            # print("="*80)
+            import traceback
+            traceback.print_exc()
             return f"Error generating answer: {e}"
     
     def query(self, question: str, top_k: int = 10) -> Dict:
