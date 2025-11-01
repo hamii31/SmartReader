@@ -49,7 +49,7 @@ class BookRAGSystem:
     
     def __init__(
         self, 
-        model_name: str = "llama3.2",
+        model_name: str = "llama3.2:1b",
         embedding_model: str = "nomic-embed-text",
         ollama_host: str = "http://localhost:11434"
     ):
@@ -65,6 +65,9 @@ class BookRAGSystem:
         self.cache_dir = self._get_cache_directory()
         
         self.check_models()
+
+        # Pre-load the generation model to avoid first-query timeouts
+        self.preload_model()
     
     def _get_cache_directory(self) -> str:
         """
@@ -96,6 +99,39 @@ class BookRAGSystem:
             print(f"✓ Using fallback cache: {cache_dir}")
         
         return cache_dir
+
+    def preload_model(self):
+        """
+        Pre-load the generation model into memory
+        This prevents first-query timeouts
+        """
+        print(f"🔄 Pre-loading model: {self.model_name}...")
+        try:
+            response = requests.post(
+                f"{self.api_url}/generate",
+                json={
+                    "model": self.model_name,
+                    "prompt": "Ready",
+                    "stream": False
+                },
+                timeout=120  # Give it 2 minutes to load
+            )
+            
+            if response.status_code == 200:
+                print(f"✓ Model {self.model_name} loaded and ready")
+                return True
+            else:
+                print(f"⚠️ Model pre-load returned status {response.status_code}")
+                return False
+                
+        except requests.exceptions.Timeout:
+            print(f"⚠️ Model took too long to pre-load (will load on first query)")
+            return False
+            
+        except Exception as e:
+            print(f"⚠️ Could not pre-load model: {e}")
+            print("Model will load on first query instead")
+            return False
     
     def get_cache_path(self, pdf_path: str) -> str:
         """
@@ -468,7 +504,7 @@ class BookRAGSystem:
         self, 
         query: str, 
         context_chunks: List[Tuple[TextChunk, float]],
-        max_context_length: int = 6000
+        max_context_length: int = 4000
     ) -> str:
         """
         Generate answer using relevant context
@@ -525,10 +561,11 @@ Answer:"""
                     "stream": False,
                     "options": {
                         "temperature": 0.3,
-                        "num_predict": 2000
+                        "num_predict": 800,
+                        "num_ctx": 4096
                     }
                 },
-                timeout=60
+                timeout=180
             )
             
             if response.status_code == 200:
@@ -598,7 +635,7 @@ def main():
     
     # Initialize system
     rag = BookRAGSystem(
-        model_name="llama3.2",
+        model_name="llama3.2:1b",
         embedding_model="nomic-embed-text"
     )
     
