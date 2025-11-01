@@ -97,7 +97,7 @@ Cache files are named uniquely based on PDF content, so:
 
 4. **Follow Setup Wizard** (10-15 minutes):
    - Install Ollama (AI engine)
-   - Download language models (~2-3 GB)
+   - Download language models (~1-2 GB)
    - Configure settings
 
 ### First Use
