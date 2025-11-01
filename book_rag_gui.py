@@ -86,7 +86,7 @@ class BookRAGApp:
     def initialize_rag(self):
         """Initialize RAG system on startup"""
         try:
-            self.rag = BookRAGSystem(model_name="llama3.2")
+            self.rag = BookRAGSystem(model_name="llama3.2:1b")
             print(f"✓ RAG system initialized")
             print(f"✓ Cache directory: {self.rag.cache_dir}")
         except Exception as e:
@@ -412,7 +412,7 @@ class BookRAGApp:
         # Version label
         tk.Label(
             status_bar,
-            text="v1.1.1",
+            text="v1.1.2",
             font=("Segoe UI", 8),
             bg=self.colors['bg_medium'],
             fg=self.colors['text_medium']
@@ -493,19 +493,19 @@ https://ollama.com/download"""
     
     def show_about(self):
         """Show about dialog"""
-        about_text = """SmartReader v1.1.1
+        about_text = """SmartReader v1.1.2
 
-AI-Powered Book Assistant
+        AI-Powered Book Assistant
 
-Features:
-- Query any PDF book locally
-- 100% private and offline
-- Permanent cache system
-- Powered by Ollama and RAG
+        Features:
+        - Query any PDF book locally
+        - 100% private and offline
+        - Permanent cache system
+        - Powered by Ollama and RAG
 
-Built with Python, Tkinter, and Ollama
+        Built with Python, Tkinter, and Ollama
 
-© 2025"""
+        © 2025"""
         
         messagebox.showinfo("About SmartReader", about_text)
     
@@ -691,7 +691,7 @@ Built with Python, Tkinter, and Ollama
         # Query in background thread
         def query_book():
             try:
-                result = self.rag.query(question, top_k=10)
+                result = self.rag.query(question, top_k=5)
                 self.root.after(0, lambda: self.on_query_complete(result))
             except Exception as error:
                 error_msg = str(error)
