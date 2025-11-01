@@ -121,7 +121,7 @@ def check_models_downloaded():
         
         if result.returncode == 0:
             output = result.stdout
-            has_llama = "llama3.2" in output
+            has_llama = "llama3.2:1b" in output
             has_embed = "nomic-embed-text" in output
             
             if has_llama and has_embed:
@@ -130,7 +130,7 @@ def check_models_downloaded():
             else:
                 missing = []
                 if not has_llama:
-                    missing.append("llama3.2")
+                    missing.append("llama3.2:1b")
                 if not has_embed:
                     missing.append("nomic-embed-text")
                 print(f"✗ Missing models: {', '.join(missing)}")
@@ -361,7 +361,7 @@ def show_splash_screen():
 def main():
     """Main entry point"""
     print("=" * 70)
-    print("SmartReader v1.1.1")
+    print("SmartReader v1.1.2")
     print("=" * 70)
     print()
     
