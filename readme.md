@@ -71,6 +71,8 @@ Cache files are named uniquely based on PDF content, so:
 
 *Size: ~25 MB | Platform: Windows 10/11 | License: MIT*
 
+**Check regulary for new releases!**
+
 ## 📋 System Requirements
 
 | Component | Minimum | Recommended |
