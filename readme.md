@@ -79,7 +79,7 @@ Cache files are named uniquely based on PDF content, so:
 |-----------|---------|-------------|
 | **OS** | Windows 10 (64-bit) | Windows 11 |
 | **RAM** | 8 GB | 16 GB |
-| **Storage** | 10 GB free | 20 GB free |
+| **Storage** | 5 GB free | 15 GB free |
 | **CPU** | Intel i5 / AMD Ryzen 5 | Intel i7 / AMD Ryzen 7 |
 | **Internet** | Required for setup only | - |
 
