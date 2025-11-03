@@ -85,22 +85,32 @@ Cache files are named uniquely based on PDF content, so:
 
 ---
 
-## 🚀 Quick Start
+## ⚡ Quick Start
 
-### Installation
+### Installation (3 steps, ~10 minutes)
 
-1. **Download** `SmartReader.exe` from the link above
-2. **Run** the executable (double-click)
-3. **Handle Windows Security Warning** (if shown):
-   - Click "More info"
-   - Click "Run anyway"
-   
-   *Note: This warning appears because the app isn't digitally signed. It's safe to run.*
+1. **Download SmartReader** (45 MB)
+   - [⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.1.3/SmartReader.exe)
 
-4. **Follow Setup Wizard** (10-15 minutes):
-   - Install Ollama (AI engine)
-   - Download language models (~1-2 GB)
-   - Configure settings
+2. **Install Ollama** (600 MB)
+   - Setup wizard will guide you
+   - Download from: https://ollama.com
+   - Simple 1-click installer
+
+3. **Download Models** (1.6 GB - automatic)
+   - SmartReader downloads these for you
+   - llama3.2:1b + nomic-embed-text
+   - Takes 5-10 minutes
+
+**Total Size:** ~2.2 GB  
+**Total Time:** ~10-15 minutes  
+**Then:** Use forever, completely offline!
+
+### After Setup
+- ✅ No internet needed
+- ✅ 100% private
+- ✅ Works offline
+- ✅ Cache books once, query forever
 
 ### First Use
 
