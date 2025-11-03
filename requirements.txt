@@ -1,0 +1,19 @@
+# SmartReader Dependencies
+# Python 3.14+ Required
+
+# Core Libraries
+requests>=2.32.5
+numpy>=2.3.4
+PyPDF2>=3.0.1
+
+# GUI (comes with Python)
+# tkinter - built-in, no install needed
+
+# External Requirements (not Python packages)
+# - Ollama (install separately from https://ollama.com)
+# - Models: llama3.2:1b, nomic-embed-text (auto-downloaded by setup wizard)
+
+# Development Dependencies (optional)
+# pyinstaller>=6.0.0  # For building executables
+# black>=23.0.0       # Code formatting
+# pylint>=3.0.0       # Linting
