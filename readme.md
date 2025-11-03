@@ -89,7 +89,7 @@ Cache files are named uniquely based on PDF content, so:
 
 ### Installation (3 steps, ~10 minutes)
 
-1. **Download SmartReader** (45 MB)
+1. **Download SmartReader** (25 MB)
    - [⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.1.3/SmartReader.exe)
 
 2. **Install Ollama** (600 MB)
