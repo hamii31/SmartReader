@@ -10,6 +10,8 @@ import sys
 import os
 from pathlib import Path
 
+VERSION = "v1.1.3"
+
 
 def get_config_dir():
     """
@@ -48,7 +50,7 @@ def mark_setup_complete():
     try:
         with open(config_file, 'w') as f:
             f.write('Setup completed successfully')
-        print(f"✓ Setup marked complete: {config_file}")
+        print(f"Setup marked complete: {config_file}")
     except Exception as e:
         print(f"Warning: Could not create setup flag: {e}")
 
@@ -78,20 +80,20 @@ def check_ollama_installed():
             )
         
         if result.returncode == 0:
-            print(f"✓ Ollama detected: {result.stdout.strip()}")
+            print(f"Ollama detected: {result.stdout.strip()}")
             return True
         else:
-            print("✗ Ollama not found (non-zero return code)")
+            print("Ollama not found (non-zero return code)")
             return False
     
     except FileNotFoundError:
-        print("✗ Ollama not found (command not found)")
+        print("Ollama not found (command not found)")
         return False
     except subprocess.TimeoutExpired:
-        print("✗ Ollama check timed out")
+        print("Ollama check timed out")
         return False
     except Exception as e:
-        print(f"✗ Ollama check failed: {e}")
+        print(f"Ollama check failed: {e}")
         return False
 
 
@@ -125,7 +127,7 @@ def check_models_downloaded():
             has_embed = "nomic-embed-text" in output
             
             if has_llama and has_embed:
-                print("✓ All required models found")
+                print("All required models found")
                 return True
             else:
                 missing = []
@@ -133,14 +135,14 @@ def check_models_downloaded():
                     missing.append("llama3.2:1b")
                 if not has_embed:
                     missing.append("nomic-embed-text")
-                print(f"✗ Missing models: {', '.join(missing)}")
+                print(f"Missing models: {', '.join(missing)}")
                 return False
         else:
-            print("✗ Could not list models")
+            print("Could not list models")
             return False
     
     except Exception as e:
-        print(f"✗ Model check failed: {e}")
+        print(f"Model check failed: {e}")
         return False
 
 
@@ -156,7 +158,7 @@ def ensure_ollama_running():
         import requests
         response = requests.get("http://localhost:11434/api/tags", timeout=2)
         if response.status_code == 200:
-            print("✓ Ollama server is running")
+            print("Ollama server is running")
             return True
     except:
         pass
@@ -187,16 +189,16 @@ def ensure_ollama_running():
             import requests
             response = requests.get("http://localhost:11434/api/tags", timeout=2)
             if response.status_code == 200:
-                print("✓ Ollama server started successfully")
+                print("Ollama server started successfully")
                 return True
         except:
             pass
         
-        print("✗ Could not verify Ollama server")
+        print("Could not verify Ollama server")
         return False
     
     except Exception as e:
-        print(f"✗ Could not start Ollama server: {e}")
+        print(f"Could not start Ollama server: {e}")
         return False
 
 
@@ -348,7 +350,7 @@ def show_splash_screen():
     # Version
     tk.Label(
         content,
-        text="v1.0.0",
+        text=VERSION,
         font=('Arial', 8),
         bg='#4a90e2',
         fg='#a0c4ff'
@@ -361,7 +363,7 @@ def show_splash_screen():
 def main():
     """Main entry point"""
     print("=" * 70)
-    print("SmartReader v1.1.2")
+    print(f"SmartReader {VERSION}")
     print("=" * 70)
     print()
     

@@ -87,8 +87,8 @@ class BookRAGApp:
         """Initialize RAG system on startup"""
         try:
             self.rag = BookRAGSystem(model_name="llama3.2:1b")
-            print(f"✓ RAG system initialized")
-            print(f"✓ Cache directory: {self.rag.cache_dir}")
+            print(f"RAG system initialized")
+            print(f"Cache directory: {self.rag.cache_dir}")
         except Exception as e:
             print(f"Warning: Could not initialize RAG: {e}")
             self.rag = None
@@ -162,7 +162,7 @@ class BookRAGApp:
         # Book section title
         book_section_label = tk.Label(
             left_panel,
-            text="📖 Book Management",
+            text="Book Management",
             font=("Segoe UI", 14, "bold"),
             bg=self.colors['white'],
             fg=self.colors['text_dark']
@@ -172,7 +172,7 @@ class BookRAGApp:
         # Upload button
         self.upload_btn = ModernButton(
             left_panel,
-            text="📄 Load PDF Book",
+            text="Load PDF Book",
             command=self.upload_pdf,
             bg=self.colors['primary'],
             fg=self.colors['white'],
@@ -220,7 +220,7 @@ class BookRAGApp:
         
         self.status_label = tk.Label(
             status_frame,
-            text="● Ready",
+            text="Ready",
             font=("Segoe UI", 9),
             bg=self.colors['bg_light'],
             fg=self.colors['text_medium']
@@ -250,7 +250,7 @@ class BookRAGApp:
         
         tk.Label(
             info_frame,
-            text="💡 How it works:",
+            text="How it works:",
             font=("Segoe UI", 10, "bold"),
             bg=self.colors['bg_light'],
             fg=self.colors['text_dark']
@@ -286,7 +286,7 @@ class BookRAGApp:
         
         tk.Label(
             chat_title_frame,
-            text="💬 Ask Questions",
+            text="Ask Questions",
             font=("Segoe UI", 14, "bold"),
             bg=self.colors['white'],
             fg=self.colors['text_dark']
@@ -295,7 +295,7 @@ class BookRAGApp:
         # Clear chat button
         self.clear_btn = ModernButton(
             chat_title_frame,
-            text="🗑️ Clear",
+            text="Clear chat",
             command=self.clear_chat,
             bg=self.colors['bg_medium'],
             fg=self.colors['text_dark'],
@@ -323,7 +323,7 @@ class BookRAGApp:
         )
         self.messages.pack(fill=tk.BOTH, expand=True)
         
-        # Configure text tags for styling
+        # Text tags styling
         self.messages.tag_config("user", foreground=self.colors['primary'], font=("Segoe UI", 10, "bold"))
         self.messages.tag_config("bot", foreground=self.colors['text_dark'], font=("Segoe UI", 10))
         self.messages.tag_config("system", foreground=self.colors['text_medium'], font=("Segoe UI", 9, "italic"))
@@ -412,7 +412,7 @@ class BookRAGApp:
         # Version label
         tk.Label(
             status_bar,
-            text="v1.1.2",
+            text="v1.1.3",
             font=("Segoe UI", 8),
             bg=self.colors['bg_medium'],
             fg=self.colors['text_medium']
@@ -424,7 +424,7 @@ class BookRAGApp:
             import requests
             response = requests.get("http://localhost:11434/api/tags", timeout=2)
             if response.status_code == 200:
-                self.add_system_message("✓ Ollama is running and ready")
+                self.add_system_message("Ollama is running and ready")
             else:
                 self.show_ollama_error()
         except:
@@ -434,17 +434,17 @@ class BookRAGApp:
         """Show error if Ollama is not running"""
         error_msg = """Ollama is not running!
 
-Please start Ollama first:
-1. Open a terminal/command prompt
-2. Run: ollama serve
-3. Keep that window open
-4. Then use this application
+        Please start Ollama first:
+        1. Open a terminal/command prompt
+        2. Run: ollama serve
+        3. Keep that window open
+        4. Then use this application
 
-Or make sure Ollama is installed:
-https://ollama.com/download"""
+        Or make sure Ollama is installed:
+        https://ollama.com/download"""
         
         messagebox.showerror("Ollama Not Running", error_msg)
-        self.add_system_message("⚠️ Ollama not detected. Please start Ollama first.")
+        self.add_system_message("Ollama not detected. Please start Ollama first.")
         self.upload_btn.config(state=tk.DISABLED)
     
     def show_cache_location(self):
@@ -487,13 +487,13 @@ https://ollama.com/download"""
             try:
                 self.rag.clear_cache()
                 messagebox.showinfo("Success", "Cache cleared successfully!")
-                self.add_system_message("✓ Cache cleared")
+                self.add_system_message("Cache cleared")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to clear cache:\n{e}")
     
     def show_about(self):
         """Show about dialog"""
-        about_text = """SmartReader v1.1.2
+        about_text = """SmartReader v1.1.3
 
         AI-Powered Book Assistant
 
@@ -540,7 +540,7 @@ https://ollama.com/download"""
         # Update UI for indexing
         self.is_indexing = True
         self.upload_btn.config(state=tk.DISABLED)
-        self.status_label.config(text="● Indexing...", fg=self.colors['warning'])
+        self.status_label.config(text="Indexing...", fg=self.colors['warning'])
         
         # Show progress bar
         self.progress.config(mode='determinate', value=0)
@@ -550,7 +550,7 @@ https://ollama.com/download"""
         self.status_bar_label.config(text="Indexing book... This may take 10-15 minutes for large books")
         
         self.add_system_message(f"Loading book: {self.current_book}")
-        self.add_system_message("⏳ Indexing... (this only happens once per book)")
+        self.add_system_message("Indexing... (this only happens once per book)")
         
         # Progress callback - FLEXIBLE SIGNATURE
         def update_progress(*args):
@@ -575,24 +575,24 @@ https://ollama.com/download"""
                 
                 # Ensure RAG system exists
                 if not self.rag:
-                    print("⚠️ RAG system was None, creating new instance...")
+                    print("RAG system was None, creating new instance...")
                     self.rag = BookRAGSystem(model_name="llama3.2")
                 
                 print("="*80)
-                print(f"📦 Cache directory: {self.rag.cache_dir}")
-                print(f"📄 PDF path: {pdf_path}")
-                print(f"📋 Is cached: {self.rag.is_cached(pdf_path)}")
-                print(f"📊 Index built before: {self.rag.index_built}")
+                print(f"Cache directory: {self.rag.cache_dir}")
+                print(f"PDF path: {pdf_path}")
+                print(f"Is cached: {self.rag.is_cached(pdf_path)}")
+                print(f"Index built before: {self.rag.index_built}")
                 print("="*80)
                 
                 # Build index (handles caching automatically)
                 self.rag.build_index(pdf_path, progress_callback=update_progress)
                 
                 print("="*80)
-                print(f"✓ Index built after: {self.rag.index_built}")
-                print(f"✓ Number of chunks: {len(self.rag.chunks)}")
+                print(f"Index built after: {self.rag.index_built}")
+                print(f"Number of chunks: {len(self.rag.chunks)}")
                 if len(self.rag.chunks) > 0:
-                    print(f"✓ First chunk has embedding: {self.rag.chunks[0].embedding is not None}")
+                    print(f"First chunk has embedding: {self.rag.chunks[0].embedding is not None}")
                 print("="*80)
                 
                 # Verify before calling complete
@@ -606,7 +606,7 @@ https://ollama.com/download"""
                 
             except Exception as error:
                 error_msg = str(error)
-                print(f"❌ ERROR during indexing: {error_msg}")
+                print(f"ERROR during indexing: {error_msg}")
                 import traceback
                 traceback.print_exc()
                 self.root.after(0, lambda: self.on_index_error(error_msg))
@@ -621,7 +621,7 @@ https://ollama.com/download"""
         
         # Verify index is actually built
         if not self.rag or not self.rag.index_built:
-            print("❌ ERROR: Index should be built but index_built is False!")
+            print("ERROR: Index should be built but index_built is False!")
             self.on_index_error("Index was not properly built")
             return
         
@@ -633,10 +633,10 @@ https://ollama.com/download"""
         self.question_input.config(state=tk.NORMAL)
         self.ask_btn.config(state=tk.NORMAL)
         
-        self.status_label.config(text="● Ready", fg=self.colors['success'])
+        self.status_label.config(text="Ready", fg=self.colors['success'])
         self.status_bar_label.config(text="Ready to answer questions!")
         
-        self.add_system_message(f"✓ Book '{self.current_book}' loaded successfully!")
+        self.add_system_message(f"Book '{self.current_book}' loaded successfully!")
         self.add_system_message("You can now ask questions about the book.")
         
         self.question_input.focus()
@@ -648,7 +648,7 @@ https://ollama.com/download"""
         self.progress_text_label.pack_forget()
         
         self.upload_btn.config(state=tk.NORMAL)
-        self.status_label.config(text="● Error", fg=self.colors['danger'])
+        self.status_label.config(text="Error", fg=self.colors['danger'])
         self.status_bar_label.config(text="Error indexing book")
         
         self.add_error_message(f"Failed to index book: {error}")
@@ -666,13 +666,13 @@ https://ollama.com/download"""
             return
         
         # Debug check
-        print(f"📝 Asking question: {question}")
-        print(f"📊 RAG exists: {self.rag is not None}")
-        print(f"📊 Index built: {self.rag.index_built if self.rag else 'N/A'}")
-        print(f"📊 Chunks loaded: {len(self.rag.chunks) if self.rag else 0}")
+        print(f"Asking question: {question}")
+        print(f"RAG exists: {self.rag is not None}")
+        print(f"Index built: {self.rag.index_built if self.rag else 'N/A'}")
+        print(f"Chunks loaded: {len(self.rag.chunks) if self.rag else 0}")
         
         if not self.rag or not self.rag.index_built:
-            print("❌ ERROR: No book loaded or index not built!")
+            print("ERROR: No book loaded or index not built!")
             messagebox.showwarning("No Book Loaded", "Please load a PDF book first.")
             return
         
@@ -686,7 +686,7 @@ https://ollama.com/download"""
         self.is_querying = True
         self.ask_btn.config(state=tk.DISABLED)
         self.question_input.config(state=tk.DISABLED)
-        self.status_bar_label.config(text="🔍 Searching and generating answer...")
+        self.status_bar_label.config(text="Searching and generating answer...")
         
         # Query in background thread
         def query_book():
@@ -704,18 +704,69 @@ https://ollama.com/download"""
         thread.start()
     
     def on_query_complete(self, result):
-        """Called when query is complete"""
+        """Handle query completion"""
+        print("="*80)
+        print("ON_QUERY_COMPLETE CALLED")
+        print(f"Result keys: {result.keys()}")
+        print(f"Answer length: {len(result.get('answer', ''))}")
+        print(f"Has error: {'error' in result}")
+        print("="*80)
+        
         self.is_querying = False
         self.ask_btn.config(state=tk.NORMAL)
         self.question_input.config(state=tk.NORMAL)
-        self.status_bar_label.config(text="Ready to answer questions!")
+        self.status_bar_label.config(text="Ready")
         
-        answer = result['answer']
-        pages = result['pages']
+        try:
+            if "error" in result:
+                error_msg = result.get('answer', 'Unknown error occurred')
+                print(f"Displaying error: {error_msg}")
+                self.add_error_message(error_msg)
+            else:
+                # Build response message
+                response = ""
+                
+                # Show query type (optional)
+                if result.get("query_type"):
+                    query_type_emoji = {
+                        'summary': '📋',
+                        'specific_page': '📄',
+                        'chapter': '📖',
+                        'specific': '🔍',
+                        'vague': '❓'
+                    }
+                    emoji = query_type_emoji.get(result["query_type"], '🔍')
+                    query_type = result["query_type"].replace('_', ' ').title()
+                    response += f"{emoji} Query Type: {query_type}\n"
+                
+                # Show pages consulted
+                if result.get("pages"):
+                    page_list = ", ".join(str(p) for p in result["pages"])
+                    response += f"📄 Pages consulted: {page_list}\n\n"
+                
+                # Add the answer
+                answer_text = result.get("answer", "")
+                if answer_text:
+                    response += answer_text
+                    print(f"Adding bot message with {len(response)} characters")
+                    self.add_bot_message(response, pages=result.get("pages"))
+                else:
+                    print("WARNING: Empty answer!")
+                    self.add_error_message("Received empty answer from system")
+                
+                # Show sources in a separate system message
+                if result.get("sources") and len(result["sources"]) > 0:
+                    sources_text = "📚 Sources:\n"
+                    for i, source in enumerate(result["sources"][:3], 1):
+                        preview = source['preview'].replace('\n', ' ')[:150]
+                        sources_text += f"{i}. Page {source['page']} (relevance: {source['similarity']:.2%})\n   {preview}...\n"
+                    self.add_system_message(sources_text)
         
-        self.add_bot_message(answer, pages)
-        
-        self.question_input.focus()
+        except Exception as e:
+            print(f"Error in on_query_complete: {e}")
+            import traceback
+            traceback.print_exc()
+            self.add_error_message(f"Error displaying results: {e}")
     
     def on_query_error(self, error):
         """Called when query fails"""
@@ -764,7 +815,7 @@ https://ollama.com/download"""
         self.messages.insert(tk.END, f"\n{text}\n", "bot")
         
         if pages and len(pages) > 0:
-            self.messages.insert(tk.END, f"📄 Sources: Pages {', '.join(map(str, pages))}\n", "sources")
+            self.messages.insert(tk.END, f"Sources: Pages {', '.join(map(str, pages))}\n", "sources")
         
         self.messages.see(tk.END)
         self.messages.config(state=tk.DISABLED)
@@ -781,7 +832,7 @@ https://ollama.com/download"""
         timestamp = datetime.now().strftime("%H:%M")
         self.messages.config(state=tk.NORMAL)
         self.messages.insert(tk.END, f"\n[{timestamp}] ", "timestamp")
-        self.messages.insert(tk.END, f"❌ {text}\n", "error")
+        self.messages.insert(tk.END, f"{text}\n", "error")
         self.messages.see(tk.END)
         self.messages.config(state=tk.DISABLED)
 

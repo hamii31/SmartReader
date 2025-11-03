@@ -171,7 +171,7 @@ class SetupWizard:
     
     # ==================== STEP 1: WELCOME ====================
     def step_welcome(self):
-        tk.Label(self.scrollable_frame, text="Welcome to SmartReader! 👋",
+        tk.Label(self.scrollable_frame, text="Welcome to SmartReader!",
                 font=('Arial', 22, 'bold'), bg='white').pack(pady=(20, 10))
         
         tk.Label(self.scrollable_frame, text="Your AI-powered book assistant",
@@ -183,9 +183,9 @@ class SetupWizard:
         
         info_text = """This setup wizard will:
 
-  ✓  Install Ollama (AI engine)
-  ✓  Download language models (~1.5 GB)
-  ✓  Configure everything for you
+  •  Install Ollama (AI engine)
+  •  Download language models (~1.5 GB)
+  •  Configure everything for you
 
 After setup, you'll be able to:
 
@@ -198,15 +198,15 @@ After setup, you'll be able to:
                 bg='#e8f4f8', justify=tk.LEFT).pack(padx=25, pady=20)
         
         # Requirements
-        tk.Label(self.scrollable_frame, text="⚠️  Requirements",
+        tk.Label(self.scrollable_frame, text="Requirements",
                 font=('Arial', 11, 'bold'), bg='white', fg='#ff6600').pack(anchor='w', pady=(20, 10))
         
         requirements = [
-            "• Windows 10 or Windows 11",
-            "• 4GB RAM minimum (8GB recommended)",
-            "• 5GB free disk space",
-            "• Internet connection (for initial setup only)",
-            "• Estimated setup time: 10-15 minutes"
+            "Windows 10 or Windows 11",
+            "4GB RAM minimum (8GB recommended)",
+            "5GB free disk space",
+            "Internet connection (for initial setup only)",
+            "Estimated setup time: 10-15 minutes"
         ]
         
         for req in requirements:
@@ -219,7 +219,7 @@ After setup, you'll be able to:
     
     # ==================== STEP 2: CHECK SYSTEM ====================
     def step_check_system(self):
-        tk.Label(self.scrollable_frame, text="Checking Your System 🔍",
+        tk.Label(self.scrollable_frame, text="Checking Your System",
                 font=('Arial', 20, 'bold'), bg='white').pack(pady=(30, 15))
         
         tk.Label(self.scrollable_frame, text="Please wait while we check what's already installed...",
@@ -261,14 +261,14 @@ After setup, you'll be able to:
             if self.ollama_installed:
                 version = result.stdout.decode().strip()
                 self.root.after(0, lambda: self.ollama_status.config(
-                    text=f"✓  Ollama is installed ({version})", fg=self.colors['success']))
+                    text=f"Ollama is installed ({version})", fg=self.colors['success']))
             else:
                 self.root.after(0, lambda: self.ollama_status.config(
-                    text="✗  Ollama is not installed", fg=self.colors['danger']))
+                    text="Ollama is not installed", fg=self.colors['danger']))
         except:
             self.ollama_installed = False
             self.root.after(0, lambda: self.ollama_status.config(
-                text="✗  Ollama is not installed", fg=self.colors['danger']))
+                text="Ollama is not installed", fg=self.colors['danger']))
         
         # Check models (only if Ollama is installed)
         if self.ollama_installed:
@@ -284,21 +284,21 @@ After setup, you'll be able to:
                 
                 if self.models_downloaded:
                     self.root.after(0, lambda: self.models_status.config(
-                        text="✓  AI models are installed (llama3.2:1b, nomic-embed-text)", 
+                        text="AI models are installed (llama3.2:1b, nomic-embed-text)", 
                         fg=self.colors['success']))
                 else:
                     missing = []
                     if not has_llama: missing.append('llama3.2:1b')
                     if not has_embed: missing.append('nomic-embed-text')
                     self.root.after(0, lambda m=missing: self.models_status.config(
-                        text=f"✗  Missing models: {', '.join(m)}", fg=self.colors['danger']))
+                        text=f"Missing models: {', '.join(m)}", fg=self.colors['danger']))
             except:
                 self.models_downloaded = False
                 self.root.after(0, lambda: self.models_status.config(
-                    text="✗  AI models are not installed", fg=self.colors['danger']))
+                    text="AI models are not installed", fg=self.colors['danger']))
         else:
             self.root.after(0, lambda: self.models_status.config(
-                text="⊘  Skipped (Ollama not installed)", fg='#999'))
+                text="Skipped (Ollama not installed)", fg='#999'))
         
         # Show overall result
         self.root.after(0, self.finish_check)
@@ -306,24 +306,24 @@ After setup, you'll be able to:
     def finish_check(self):
         if self.ollama_installed and self.models_downloaded:
             self.overall_status.config(
-                text="🎉  Everything is ready! Click Next to finish.",
+                text="Everything is ready! Click Next to finish.",
                 fg=self.colors['success'])
             self.current_step = 3  # Skip to completion
         elif self.ollama_installed and not self.models_downloaded:
             self.overall_status.config(
-                text="📥  Need to download AI models. Click Next to continue.",
+                text="Need to download AI models. Click Next to continue.",
                 fg=self.colors['warning'])
             self.current_step = 2  # Skip Ollama install
         else:
             self.overall_status.config(
-                text="📦  Need to install Ollama and models. Click Next to continue.",
+                text="Need to install Ollama and models. Click Next to continue.",
                 fg=self.colors['warning'])
         
         self.next_button.config(state=tk.NORMAL)
     
     # ==================== STEP 3: INSTALL OLLAMA ====================
     def step_install_ollama(self):
-        tk.Label(self.scrollable_frame, text="Install Ollama ⚙️",
+        tk.Label(self.scrollable_frame, text="Install Ollama",
                 font=('Arial', 20, 'bold'), bg='white').pack(pady=(30, 15))
         
         tk.Label(self.scrollable_frame, text="Ollama is the AI engine that powers SmartReader",
@@ -349,20 +349,20 @@ After setup, you'll be able to:
             import webbrowser
             webbrowser.open('https://ollama.com/download')
         
-        tk.Button(self.scrollable_frame, text="🌐  Open Ollama Website",
+        tk.Button(self.scrollable_frame, text="Open Ollama Website",
                  command=open_ollama_site,
                  font=('Arial', 11, 'bold'),
                  bg=self.colors['primary'], fg='white',
                  padx=20, pady=10, cursor='hand2').pack(pady=10)
         
-        tk.Label(self.scrollable_frame, text="💡 After installing, click Next",
+        tk.Label(self.scrollable_frame, text="After installing, click Next",
                 font=('Arial', 10, 'italic'), bg='white', fg='#666').pack(pady=20)
         
         self.ollama_installed = True  # Assume user will install
     
     # ==================== STEP 4: DOWNLOAD MODELS (AUTOMATED) ====================
     def step_download_models(self):
-        tk.Label(self.scrollable_frame, text="Download AI Models 🧠",
+        tk.Label(self.scrollable_frame, text="Download AI Models",
                 font=('Arial', 20, 'bold'), bg='white').pack(pady=(30, 15))
         
         tk.Label(self.scrollable_frame, text="Downloading optimized models (~1.5 GB total)",
@@ -419,7 +419,7 @@ This may take 5-10 minutes depending on your internet speed."""
                     ))
                 
                 # Download model
-                print(f"📥 Pulling {model}...")
+                print(f"Pulling {model}...")
                 result = subprocess.run(
                     ['ollama', 'pull', model],
                     capture_output=True,
@@ -428,18 +428,18 @@ This may take 5-10 minutes depending on your internet speed."""
                 )
                 
                 if result.returncode == 0:
-                    print(f"✓ Successfully downloaded {model}")
+                    print(f"Successfully downloaded {model}")
                 else:
-                    print(f"❌ Failed to download {model}: {result.stderr}")
+                    print(f"Failed to download {model}: {result.stderr}")
                     self.root.after(0, lambda m=model: self.download_failed(m))
                     return
                     
             except subprocess.TimeoutExpired:
-                print(f"❌ Timeout downloading {model}")
+                print(f"Timeout downloading {model}")
                 self.root.after(0, lambda m=model: self.download_failed(m, "timeout"))
                 return
             except Exception as e:
-                print(f"❌ Error downloading {model}: {e}")
+                print(f"Error downloading {model}: {e}")
                 self.root.after(0, lambda m=model, err=str(e): self.download_failed(m, err))
                 return
         
@@ -450,7 +450,7 @@ This may take 5-10 minutes depending on your internet speed."""
         """Called when all models are downloaded"""
         self.download_progress.stop()
         self.download_status.config(
-            text="✓ All models downloaded successfully!",
+            text="All models downloaded successfully!",
             fg=self.colors['success']
         )
         
@@ -467,7 +467,7 @@ This may take 5-10 minutes depending on your internet speed."""
         """Called when download fails"""
         self.download_progress.stop()
         self.download_status.config(
-            text=f"❌ Failed to download {model}",
+            text=f"Failed to download {model}",
             fg=self.colors['danger']
         )
         
@@ -507,12 +507,12 @@ Please try:
         features_box.pack(fill=tk.X, pady=15)
         
         features = [
-            "✓  Upload any PDF book or document",
-            "✓  Ask questions in plain English",
-            "✓  Get instant, cited answers (20-30 seconds)",
-            "✓  Work completely offline",
-            "✓  100% private - no data leaves your computer",
-            "✓  Optimized for fast CPU performance"
+            "Upload any PDF book or document",
+            "Ask questions in plain English",
+            "Get instant, cited answers (20-30 seconds)",
+            "Work completely offline",
+            "100% private - no data leaves your computer",
+            "Optimized for fast CPU performance"
         ]
         
         for feature in features:
