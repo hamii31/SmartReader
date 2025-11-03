@@ -404,15 +404,3 @@ If you find SmartReader useful, consider:
 - ☕ **[Buy me a coffee](https://buymeacoffee.com/ibriyamovhq)** 
 
 ---
-
-<p align="center">
-  <strong>Built with ❤️ using Python and AI</strong><br>
-  <sub>Made as a portfolio project demonstrating RAG implementation</sub>
-</p>
-
-<p align="center">
-  <a href="#-download">Download</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-troubleshooting">Troubleshooting</a> •
-  <a href="#-contributing">Contributing</a>
-</p>
