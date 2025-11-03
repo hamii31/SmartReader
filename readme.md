@@ -65,9 +65,9 @@ Cache files are named uniquely based on PDF content, so:
 
 ## 📥 Download
 
-### Latest Release (v1.1.2)
+### Latest Release (v1.1.3)
 
-**[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.1.2/SmartReader.exe)**
+**[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.1.3/SmartReader.exe)**
 
 *Size: ~25 MB | Platform: Windows 10/11 | License: MIT*
 
