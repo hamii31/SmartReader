@@ -42,9 +42,9 @@ class BookRAGApp:
     
     def __init__(self, root):
         self.root = root
-        self.root.title("SmartReader")
-        self.root.geometry("1000x750")
-        self.root.minsize(900, 600)
+        self.root.title("SmartReader Enhanced")
+        self.root.geometry("1200x800")  # Wider for CoT display
+        self.root.minsize(1000, 700)
         
         # Configure colors
         self.colors = {
@@ -58,7 +58,11 @@ class BookRAGApp:
             'success': '#28a745',
             'warning': '#ffc107',
             'danger': '#dc3545',
-            'white': '#ffffff'
+            'white': '#ffffff',
+            'reasoning': '#8e44ad',  # NEW: For CoT display
+            'confidence_high': '#27ae60',  # NEW: High confidence
+            'confidence_medium': '#f39c12',  # NEW: Medium confidence
+            'confidence_low': '#e74c3c'  # NEW: Low confidence
         }
         
         # Application state
@@ -84,10 +88,11 @@ class BookRAGApp:
         self.root.after(100, self.check_ollama)
     
     def initialize_rag(self):
-        """Initialize RAG system on startup"""
+        """Initialize RAG system on startup with enhanced model"""
         try:
-            self.rag = BookRAGSystem(model_name="llama3.2:1b")
-            print(f"RAG system initialized")
+            # ENHANCED: Use 3b model
+            self.rag = BookRAGSystem(model_name="llama3.2:3b")
+            print(f"RAG system initialized with enhanced model")
             print(f"Cache directory: {self.rag.cache_dir}")
         except Exception as e:
             print(f"Warning: Could not initialize RAG: {e}")
@@ -108,6 +113,9 @@ class BookRAGApp:
         tools_menu = tk.Menu(menubar, tearoff=0)
         tools_menu.add_command(label="Cache Location", command=self.show_cache_location)
         tools_menu.add_command(label="Clear Cache", command=self.clear_cache_dialog)
+        tools_menu.add_separator()
+        # NEW: Clear conversation history
+        tools_menu.add_command(label="Clear Conversation History", command=self.clear_conversation_history)
         menubar.add_cascade(label="Tools", menu=tools_menu)
         
         # Help menu
@@ -122,7 +130,7 @@ class BookRAGApp:
         self.root.bind('<Control-q>', lambda e: self.root.quit())
     
     def setup_ui(self):
-        """Create the user interface"""
+        """Create the enhanced user interface"""
         
         # ==================== HEADER ====================
         header_frame = tk.Frame(self.root, bg=self.colors['primary'], height=100)
@@ -132,18 +140,18 @@ class BookRAGApp:
         # Title
         title_label = tk.Label(
             header_frame,
-            text="SmartReader",
+            text="SmartReader Enhanced",
             font=("Segoe UI", 28, "bold"),
             bg=self.colors['primary'],
             fg=self.colors['white']
         )
-        title_label.pack(pady=(20, 5))
+        title_label.pack(pady=(15, 2))
         
-        # Subtitle
+        # Subtitle - ENHANCED
         subtitle_label = tk.Label(
             header_frame,
-            text="Query any book locally with AI - 100% private, no internet needed",
-            font=("Segoe UI", 11),
+            text="AI Assistant with Chain-of-Thought • Confidence Scoring • Multi-Turn Context",
+            font=("Segoe UI", 10),
             bg=self.colors['primary'],
             fg=self.colors['white']
         )
@@ -153,10 +161,10 @@ class BookRAGApp:
         main_frame = tk.Frame(self.root, bg=self.colors['bg_light'])
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
-        # Left panel - Book management
+        # Left panel - Book management & Stats
         left_panel = tk.Frame(main_frame, bg=self.colors['white'], relief=tk.RAISED, borderwidth=1)
         left_panel.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 10), pady=0)
-        left_panel.config(width=280)
+        left_panel.config(width=300)
         left_panel.pack_propagate(False)
         
         # Book section title
@@ -201,7 +209,7 @@ class BookRAGApp:
             font=("Segoe UI", 9),
             bg=self.colors['bg_light'],
             fg=self.colors['text_dark'],
-            wraplength=240,
+            wraplength=260,
             justify=tk.LEFT
         )
         self.book_name_label.pack(anchor='w')
@@ -233,9 +241,8 @@ class BookRAGApp:
             mode='determinate',
             length=250
         )
-        # Don't pack by default - only show when needed
         
-        # Progress text label (create but don't pack)
+        # Progress text label
         self.progress_text_label = tk.Label(
             left_panel,
             text="",
@@ -244,25 +251,61 @@ class BookRAGApp:
             fg=self.colors['text_medium']
         )
         
+        # NEW: Conversation Statistics
+        conv_frame = tk.Frame(left_panel, bg=self.colors['bg_light'])
+        conv_frame.pack(fill=tk.X, padx=15, pady=15)
+        
+        tk.Label(
+            conv_frame,
+            text="Conversation:",
+            font=("Segoe UI", 9, "bold"),
+            bg=self.colors['bg_light'],
+            fg=self.colors['text_medium']
+        ).pack(anchor='w', pady=(5, 2))
+        
+        self.conversation_count_label = tk.Label(
+            conv_frame,
+            text="0 questions asked",
+            font=("Segoe UI", 9),
+            bg=self.colors['bg_light'],
+            fg=self.colors['text_dark']
+        )
+        self.conversation_count_label.pack(anchor='w')
+        
+        # NEW: Clear history button
+        self.clear_history_btn = ModernButton(
+            left_panel,
+            text="🗑️ Clear History",
+            command=self.clear_conversation_history,
+            bg=self.colors['danger'],
+            fg=self.colors['white'],
+            activebackground='#c0392b',
+            activeforeground=self.colors['white'],
+            padx=15,
+            pady=8
+        )
+        self.clear_history_btn.pack(pady=5, padx=15, fill=tk.X)
+        
         # Info section
         info_frame = tk.Frame(left_panel, bg=self.colors['bg_light'])
         info_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
         
         tk.Label(
             info_frame,
-            text="How it works:",
+            text="Enhanced Features:",
             font=("Segoe UI", 10, "bold"),
             bg=self.colors['bg_light'],
             fg=self.colors['text_dark']
         ).pack(anchor='w', pady=(0, 8))
         
+        # ENHANCED instructions
         instructions = [
-            "1. Load a PDF book",
-            "2. Wait for indexing (first time)",
-            "3. Ask questions!",
+            "🧠 See AI reasoning",
+            "📊 Confidence scores",
+            "💬 Follow-up questions",
+            "⚡ Smarter answers",
             "",
-            "✓ 100% Local",
-            "✓ Completely Private",
+            "✓ 100% Local & Private",
             "✓ Works Offline"
         ]
         
@@ -295,7 +338,7 @@ class BookRAGApp:
         # Clear chat button
         self.clear_btn = ModernButton(
             chat_title_frame,
-            text="Clear chat",
+            text="Clear Chat",
             command=self.clear_chat,
             bg=self.colors['bg_medium'],
             fg=self.colors['text_dark'],
@@ -310,7 +353,7 @@ class BookRAGApp:
         messages_frame = tk.Frame(right_panel, bg=self.colors['bg_light'])
         messages_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 10))
         
-        # Custom scrolled text with better styling
+        # Custom scrolled text with enhanced styling
         self.messages = scrolledtext.ScrolledText(
             messages_frame,
             wrap=tk.WORD,
@@ -323,13 +366,22 @@ class BookRAGApp:
         )
         self.messages.pack(fill=tk.BOTH, expand=True)
         
-        # Text tags styling
+        # ENHANCED text tags styling
         self.messages.tag_config("user", foreground=self.colors['primary'], font=("Segoe UI", 10, "bold"))
         self.messages.tag_config("bot", foreground=self.colors['text_dark'], font=("Segoe UI", 10))
         self.messages.tag_config("system", foreground=self.colors['text_medium'], font=("Segoe UI", 9, "italic"))
         self.messages.tag_config("sources", foreground=self.colors['success'], font=("Segoe UI", 9))
         self.messages.tag_config("error", foreground=self.colors['danger'], font=("Segoe UI", 10))
         self.messages.tag_config("timestamp", foreground=self.colors['text_medium'], font=("Segoe UI", 8))
+        
+        # NEW: Chain-of-thought reasoning styling
+        self.messages.tag_config("reasoning", foreground=self.colors['reasoning'], font=("Segoe UI", 9, "italic"))
+        self.messages.tag_config("reasoning_header", foreground=self.colors['reasoning'], font=("Segoe UI", 10, "bold"))
+        
+        # NEW: Confidence score styling
+        self.messages.tag_config("confidence_high", foreground=self.colors['confidence_high'], font=("Segoe UI", 9, "bold"))
+        self.messages.tag_config("confidence_medium", foreground=self.colors['confidence_medium'], font=("Segoe UI", 9, "bold"))
+        self.messages.tag_config("confidence_low", foreground=self.colors['confidence_low'], font=("Segoe UI", 9, "bold"))
         
         # Example questions
         examples_frame = tk.Frame(right_panel, bg=self.colors['white'])
@@ -409,10 +461,10 @@ class BookRAGApp:
         )
         self.status_bar_label.pack(side=tk.LEFT, padx=10)
         
-        # Version label
+        # Version label - ENHANCED
         tk.Label(
             status_bar,
-            text="v1.1.3",
+            text="v2.0 Enhanced",
             font=("Segoe UI", 8),
             bg=self.colors['bg_medium'],
             fg=self.colors['text_medium']
@@ -424,7 +476,7 @@ class BookRAGApp:
             import requests
             response = requests.get("http://localhost:11434/api/tags", timeout=2)
             if response.status_code == 200:
-                self.add_system_message("Ollama is running and ready")
+                self.add_system_message("✅ Ollama is running - Enhanced model ready")
             else:
                 self.show_ollama_error()
         except:
@@ -434,17 +486,20 @@ class BookRAGApp:
         """Show error if Ollama is not running"""
         error_msg = """Ollama is not running!
 
-        Please start Ollama first:
-        1. Open a terminal/command prompt
-        2. Run: ollama serve
-        3. Keep that window open
-        4. Then use this application
+Please start Ollama first:
+1. Open a terminal/command prompt
+2. Run: ollama serve
+3. Keep that window open
+4. Then use this application
 
-        Or make sure Ollama is installed:
-        https://ollama.com/download"""
+Make sure you have llama3.2:3b installed:
+ollama pull llama3.2:3b
+
+Or download Ollama from:
+https://ollama.com/download"""
         
         messagebox.showerror("Ollama Not Running", error_msg)
-        self.add_system_message("Ollama not detected. Please start Ollama first.")
+        self.add_system_message("⚠️ Ollama not detected. Please start Ollama first.")
         self.upload_btn.config(state=tk.DISABLED)
     
     def show_cache_location(self):
@@ -460,8 +515,8 @@ class BookRAGApp:
             f"Cache Directory:\n{cache_dir}\n\n"
             f"Cached Books: {num_books}\n"
             f"Total Size: {size_mb:.2f} MB\n\n"
-            "Cache persists even if you move the application.\n"
-            "You can manually delete this folder to free up space."
+            "Enhanced caches use '_enhanced.pkl' suffix.\n"
+            "Cache persists even if you move the application."
         )
     
     def clear_cache_dialog(self):
@@ -487,27 +542,57 @@ class BookRAGApp:
             try:
                 self.rag.clear_cache()
                 messagebox.showinfo("Success", "Cache cleared successfully!")
-                self.add_system_message("Cache cleared")
+                self.add_system_message("🗑️ Cache cleared")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to clear cache:\n{e}")
     
+    def clear_conversation_history(self):
+        """NEW: Clear conversation history"""
+        if not self.rag:
+            return
+        
+        history = self.rag.get_conversation_history()
+        if len(history) == 0:
+            messagebox.showinfo("No History", "Conversation history is already empty.")
+            return
+        
+        response = messagebox.askyesno(
+            "Clear Conversation History",
+            f"This will clear {len(history)} conversation turn(s).\n\n"
+            "The AI will lose context of previous questions.\n\n"
+            "Continue?"
+        )
+        
+        if response:
+            self.rag.clear_conversation_history()
+            self.conversation_count_label.config(text="0 questions asked")
+            self.add_system_message("🗑️ Conversation history cleared - fresh start!")
+    
     def show_about(self):
         """Show about dialog"""
-        about_text = """SmartReader v1.1.3
+        about_text = """SmartReader Enhanced v2.0
 
-        AI-Powered Book Assistant
+AI-Powered Book Assistant with Advanced Features
 
-        Features:
-        - Query any PDF book locally
-        - 100% private and offline
-        - Permanent cache system
-        - Powered by Ollama and RAG
+NEW in v2.0:
+🧠 Chain-of-Thought Reasoning
+📊 Confidence Scoring
+💬 Multi-Turn Context
+⚡ llama3.2:3b Model
 
-        Built with Python, Tkinter, and Ollama
+Features:
+- Query any PDF book locally
+- See AI's reasoning process
+- Know when to trust answers
+- Natural follow-up questions
+- 100% private and offline
+- Permanent cache system
 
-        © 2025"""
+Built with Python, Tkinter, and Ollama
+
+© 2025"""
         
-        messagebox.showinfo("About SmartReader", about_text)
+        messagebox.showinfo("About SmartReader Enhanced", about_text)
     
     def upload_pdf(self):
         """Handle PDF upload"""
@@ -549,8 +634,8 @@ class BookRAGApp:
         
         self.status_bar_label.config(text="Indexing book... This may take 10-15 minutes for large books")
         
-        self.add_system_message(f"Loading book: {self.current_book}")
-        self.add_system_message("Indexing... (this only happens once per book)")
+        self.add_system_message(f"📖 Loading book: {self.current_book}")
+        self.add_system_message("⚙️ Indexing with enhanced model... (first time only)")
         
         # Progress callback - FLEXIBLE SIGNATURE
         def update_progress(*args):
@@ -576,7 +661,7 @@ class BookRAGApp:
                 # Ensure RAG system exists
                 if not self.rag:
                     print("RAG system was None, creating new instance...")
-                    self.rag = BookRAGSystem(model_name="llama3.2")
+                    self.rag = BookRAGSystem(model_name="llama3.2:3b")
                 
                 print("="*80)
                 print(f"Cache directory: {self.rag.cache_dir}")
@@ -634,10 +719,10 @@ class BookRAGApp:
         self.ask_btn.config(state=tk.NORMAL)
         
         self.status_label.config(text="Ready", fg=self.colors['success'])
-        self.status_bar_label.config(text="Ready to answer questions!")
+        self.status_bar_label.config(text="Ready to answer questions with enhanced AI!")
         
-        self.add_system_message(f"Book '{self.current_book}' loaded successfully!")
-        self.add_system_message("You can now ask questions about the book.")
+        self.add_system_message(f"✅ Book '{self.current_book}' loaded successfully!")
+        self.add_system_message("💬 You can now ask questions. Follow-up questions will use conversation context.")
         
         self.question_input.focus()
     
@@ -651,7 +736,7 @@ class BookRAGApp:
         self.status_label.config(text="Error", fg=self.colors['danger'])
         self.status_bar_label.config(text="Error indexing book")
         
-        self.add_error_message(f"Failed to index book: {error}")
+        self.add_error_message(f"❌ Failed to index book: {error}")
         
         messagebox.showerror(
             "Indexing Error",
@@ -686,7 +771,7 @@ class BookRAGApp:
         self.is_querying = True
         self.ask_btn.config(state=tk.DISABLED)
         self.question_input.config(state=tk.DISABLED)
-        self.status_bar_label.config(text="Searching and generating answer...")
+        self.status_bar_label.config(text="🧠 Thinking with chain-of-thought reasoning...")
         
         # Query in background thread
         def query_book():
@@ -704,12 +789,13 @@ class BookRAGApp:
         thread.start()
     
     def on_query_complete(self, result):
-        """Handle query completion"""
+        """ENHANCED: Handle query completion with CoT and confidence display"""
         print("="*80)
         print("ON_QUERY_COMPLETE CALLED")
         print(f"Result keys: {result.keys()}")
         print(f"Answer length: {len(result.get('answer', ''))}")
-        print(f"Has error: {'error' in result}")
+        print(f"Has reasoning: {'reasoning' in result}")
+        print(f"Has confidence: {'confidence_score' in result}")
         print("="*80)
         
         self.is_querying = False
@@ -723,10 +809,14 @@ class BookRAGApp:
                 print(f"Displaying error: {error_msg}")
                 self.add_error_message(error_msg)
             else:
-                # Build response message
+                # NEW: Display chain-of-thought reasoning
+                if result.get('reasoning'):
+                    self.add_reasoning_message(result['reasoning'])
+                
+                # Build and display answer
                 response = ""
                 
-                # Show query type (optional)
+                # Show query type
                 if result.get("query_type"):
                     query_type_emoji = {
                         'summary': '📋',
@@ -754,9 +844,21 @@ class BookRAGApp:
                     print("WARNING: Empty answer!")
                     self.add_error_message("Received empty answer from system")
                 
+                # NEW: Display confidence score
+                if 'confidence_score' in result:
+                    self.add_confidence_message(
+                        result['confidence_score'],
+                        result.get('confidence_explanation', ''),
+                        result.get('model_certainty', '')
+                    )
+                
+                # Update conversation count
+                history = self.rag.get_conversation_history()
+                self.conversation_count_label.config(text=f"{len(history)} questions asked")
+                
                 # Show sources in a separate system message
                 if result.get("sources") and len(result["sources"]) > 0:
-                    sources_text = "📚 Sources:\n"
+                    sources_text = "📚 Top Sources:\n"
                     for i, source in enumerate(result["sources"][:3], 1):
                         preview = source['preview'].replace('\n', ' ')[:150]
                         sources_text += f"{i}. Page {source['page']} (relevance: {source['similarity']:.2%})\n   {preview}...\n"
@@ -775,7 +877,7 @@ class BookRAGApp:
         self.question_input.config(state=tk.NORMAL)
         self.status_bar_label.config(text="Error during query")
         
-        self.add_error_message(f"Error: {error}")
+        self.add_error_message(f"❌ Error: {error}")
     
     def use_example(self, question):
         """Use an example question"""
@@ -788,13 +890,13 @@ class BookRAGApp:
         """Clear the chat messages"""
         response = messagebox.askyesno(
             "Clear Chat",
-            "Are you sure you want to clear all messages?"
+            "Are you sure you want to clear all messages?\n\n(Conversation history will remain active)"
         )
         if response:
             self.messages.config(state=tk.NORMAL)
             self.messages.delete(1.0, tk.END)
             self.messages.config(state=tk.DISABLED)
-            self.add_system_message("Chat cleared")
+            self.add_system_message("✨ Chat cleared (conversation history preserved)")
     
     def add_user_message(self, text):
         """Add user message to chat"""
@@ -803,6 +905,15 @@ class BookRAGApp:
         self.messages.insert(tk.END, f"\n[{timestamp}] ", "timestamp")
         self.messages.insert(tk.END, "You: ", "user")
         self.messages.insert(tk.END, f"{text}\n", "bot")
+        self.messages.see(tk.END)
+        self.messages.config(state=tk.DISABLED)
+    
+    def add_reasoning_message(self, reasoning):
+        """NEW: Add chain-of-thought reasoning to chat"""
+        self.messages.config(state=tk.NORMAL)
+        self.messages.insert(tk.END, "\n🧠 ", "reasoning_header")
+        self.messages.insert(tk.END, "Reasoning:\n", "reasoning_header")
+        self.messages.insert(tk.END, f"{reasoning}\n", "reasoning")
         self.messages.see(tk.END)
         self.messages.config(state=tk.DISABLED)
     
@@ -815,7 +926,33 @@ class BookRAGApp:
         self.messages.insert(tk.END, f"\n{text}\n", "bot")
         
         if pages and len(pages) > 0:
-            self.messages.insert(tk.END, f"Sources: Pages {', '.join(map(str, pages))}\n", "sources")
+            self.messages.insert(tk.END, f"📄 Sources: Pages {', '.join(map(str, pages))}\n", "sources")
+        
+        self.messages.see(tk.END)
+        self.messages.config(state=tk.DISABLED)
+    
+    def add_confidence_message(self, score, explanation, model_certainty):
+        """NEW: Add confidence score visualization to chat"""
+        self.messages.config(state=tk.NORMAL)
+        
+        # Choose icon and tag based on score
+        if score > 0.7:
+            icon = "✅"
+            tag = "confidence_high"
+        elif score > 0.4:
+            icon = "⚠️"
+            tag = "confidence_medium"
+        else:
+            icon = "❌"
+            tag = "confidence_low"
+        
+        # Display confidence
+        confidence_text = f"\n{icon} Confidence: {score:.0%} - {explanation}\n"
+        self.messages.insert(tk.END, confidence_text, tag)
+        
+        # Display model certainty if available
+        if model_certainty:
+            self.messages.insert(tk.END, f"🤖 Model certainty: {model_certainty}\n", "sources")
         
         self.messages.see(tk.END)
         self.messages.config(state=tk.DISABLED)
