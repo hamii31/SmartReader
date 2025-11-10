@@ -11,4 +11,4 @@ PyPDF2>=3.0.1
 
 # External Requirements (not Python packages)
 # - Ollama (install separately from https://ollama.com)
-# - Models: llama3.2:1b, nomic-embed-text (auto-downloaded by setup wizard)
+# - Models: llama3.2:3b, nomic-embed-text (auto-downloaded by setup wizard)
