@@ -65,9 +65,9 @@ Cache files are named uniquely based on PDF content, so:
 
 ## 📥 Download
 
-### Latest Release (v1.1.3)
+### Latest Release (v2.0.0)
 
-**[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v1.1.3/SmartReader.exe)**
+**[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v2.0.0/SmartReader.exe)**
 
 *Size: ~25 MB | Platform: Windows 10/11 | License: MIT*
 
@@ -79,7 +79,7 @@ Cache files are named uniquely based on PDF content, so:
 |-----------|---------|-------------|
 | **OS** | Windows 10 (64-bit) | Windows 11 |
 | **RAM** | 8 GB | 16 GB |
-| **Storage** | 5 GB free | 15 GB free |
+| **Storage** | 10 GB free | 20 GB free |
 | **CPU** | Intel i5 / AMD Ryzen 5 | Intel i7 / AMD Ryzen 7 |
 | **Internet** | Required for setup only | - |
 
@@ -97,12 +97,12 @@ Cache files are named uniquely based on PDF content, so:
    - Download from: https://ollama.com
    - Simple 1-click installer
 
-3. **Download Models** (1.6 GB - automatic)
+3. **Download Models** (2.2 GB - automatic)
    - SmartReader downloads these for you
-   - llama3.2:1b + nomic-embed-text
+   - llama3.2:3b + nomic-embed-text
    - Takes 5-10 minutes
 
-**Total Size:** ~2.2 GB  
+**Total Size:** ~2.5 GB  
 **Total Time:** ~10-15 minutes  
 **Then:** Use forever, completely offline!
 
@@ -138,7 +138,7 @@ Cache files are named uniquely based on PDF content, so:
 - **Ollama** - Local LLM inference engine
 
 ### AI/ML Components
-- **llama3.2:1b** - Language model (1B parameters)
+- **llama3.2:3b** - Advanced Reasoning Language model (3B parameters)
 - **nomic-embed-text** - Text embedding model
 - **RAG Architecture** - Retrieval-Augmented Generation
 
@@ -190,7 +190,7 @@ graph LR
    - Find top-K relevant chunks via cosine similarity
 
 6. **Answer Generation**
-   - Feed context to llama3.2:1b
+   - Feed context to llama3.2:3b
    - Generate coherent answers with citations
    - Return page references for verification
 
@@ -225,7 +225,7 @@ venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 
 # Download required models
-ollama pull llama3.2:1b
+ollama pull llama3.2:3b
 ollama pull nomic-embed-text
 
 # Run application
@@ -302,15 +302,6 @@ SmartReader/
 - Ensure you have 16GB RAM
 - Close other applications
 - Try smaller PDF files (under 500 pages)
-
----
-
-## 📝 Roadmap
-
-### Version 1.2 (2025)
-- [ ] Multiple book support (query across books)
-- [ ] Export chat history
-- [ ] Dark mode
 
 ---
 
