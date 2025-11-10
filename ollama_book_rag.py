@@ -45,11 +45,17 @@ class BookRAGSystem:
     - Uses embeddings for semantic search
     - Retrieves only relevant sections for a query
     - Generates answers based on relevant context
+    
+    ENHANCED:
+    - llama3.2:3b for better reasoning
+    - Chain-of-thought explanation
+    - Confidence scoring
+    - Multi-turn conversation memory
     """
     
     def __init__(
         self, 
-        model_name: str = "llama3.2:1b",
+        model_name: str = "llama3.2:3b",  # UPGRADED from 1b
         embedding_model: str = "nomic-embed-text",
         ollama_host: str = "http://localhost:11434"
     ):
@@ -60,6 +66,9 @@ class BookRAGSystem:
         
         self.chunks = []
         self.index_built = False
+        
+        # NEW: Conversation history for multi-turn context
+        self.conversation_history = []
         
         # Set permanent cache directory
         self.cache_dir = self._get_cache_directory()
@@ -272,7 +281,8 @@ class BookRAGSystem:
         safe_name = "".join(c for c in pdf_name if c.isalnum() or c in (' ', '-', '_')).strip()
         safe_name = safe_name.replace(' ', '_')
         
-        cache_filename = f"{safe_name}_{file_hash[:8]}.pkl"
+        # Add "enhanced" suffix to distinguish from old caches
+        cache_filename = f"{safe_name}_{file_hash[:8]}_enhanced.pkl"
         
         return os.path.join(self.cache_dir, cache_filename)
     
@@ -618,14 +628,116 @@ class BookRAGSystem:
         
         return top_results
     
+    def calculate_confidence_score(
+        self, 
+        similarities: List[float], 
+        context_length: int
+    ) -> Tuple[float, str]:
+        """
+        NEW: Calculate confidence score for answer quality
+        
+        Args:
+            similarities: List of similarity scores from retrieval
+            context_length: Total length of context being used
+            
+        Returns:
+            Tuple of (confidence_score, explanation)
+        """
+        if not similarities:
+            return 0.0, "No relevant information found"
+        
+        # Calculate metrics
+        avg_similarity = np.mean(similarities)
+        max_similarity = max(similarities)
+        min_similarity = min(similarities)
+        similarity_variance = np.var(similarities)
+        
+        # Scoring components
+        score = 0.0
+        reasons = []
+        
+        # Factor 1: Average relevance (40% weight)
+        if avg_similarity > 0.7:
+            score += 0.4
+            reasons.append("high relevance")
+        elif avg_similarity > 0.5:
+            score += 0.25
+            reasons.append("moderate relevance")
+        else:
+            score += 0.1
+            reasons.append("low relevance")
+        
+        # Factor 2: Best match quality (30% weight)
+        if max_similarity > 0.8:
+            score += 0.3
+            reasons.append("strong best match")
+        elif max_similarity > 0.6:
+            score += 0.2
+            reasons.append("good best match")
+        else:
+            score += 0.1
+            reasons.append("weak best match")
+        
+        # Factor 3: Consistency (20% weight)
+        if similarity_variance < 0.01:
+            score += 0.2
+            reasons.append("consistent results")
+        elif similarity_variance < 0.05:
+            score += 0.1
+            reasons.append("moderate consistency")
+        
+        # Factor 4: Context availability (10% weight)
+        if context_length > 2000:
+            score += 0.1
+            reasons.append("sufficient context")
+        elif context_length > 1000:
+            score += 0.05
+        
+        # Generate explanation
+        if score > 0.7:
+            level = "High"
+        elif score > 0.4:
+            level = "Medium"
+        else:
+            level = "Low"
+        
+        explanation = f"{level} confidence ({', '.join(reasons)})"
+        
+        return score, explanation
+    
+    def format_conversation_context(self) -> str:
+        """
+        NEW: Format recent conversation history for context
+        
+        Returns:
+            Formatted string of recent conversation
+        """
+        if not self.conversation_history:
+            return ""
+        
+        # Only use last 3 turns to avoid context bloat
+        recent_history = self.conversation_history[-3:]
+        
+        context_parts = []
+        for turn in recent_history:
+            context_parts.append(f"Previous Q: {turn['question']}")
+            # Truncate long answers
+            answer = turn.get('answer', '')
+            if len(answer) > 200:
+                answer = answer[:200] + "..."
+            if answer:
+                context_parts.append(f"Previous A: {answer}")
+        
+        return "\n".join(context_parts)
+    
     def generate_answer(
         self, 
         query: str, 
         context_chunks: List[Tuple[TextChunk, float]],
-        max_context_length: int = 8000
-    ) -> str:
+        max_context_length: int = 4000
+    ) -> Dict:
         """
-        Generate answer using relevant context
+        ENHANCED: Generate answer with chain-of-thought reasoning
         
         Args:
             query: User's question
@@ -633,19 +745,23 @@ class BookRAGSystem:
             max_context_length: Maximum characters to include in context
             
         Returns:
-            Generated answer
+            Dictionary with answer, reasoning, and model certainty
         """
 
         import time
     
         # Safety check: ensure there are chunks
         if not context_chunks:
-            return "Error: No content chunks provided for answer generation."
+            return {
+                'answer': "Error: No content chunks provided for answer generation.",
+                'reasoning': "",
+                'model_certainty': "Low - No content available"
+            }
 
         # Build context from top chunks
         context_parts = []
         current_length = 0
-        page_numbers = set() # Track actual pages
+        page_numbers = set()  # Track actual pages
 
         for i, (chunk, score) in enumerate(context_chunks):
             chunk_text = f"[Page {chunk.page_number}]\n{chunk.text}\n"
@@ -675,45 +791,102 @@ class BookRAGSystem:
 
         # Check again for chunks
         if not page_numbers or not context_parts:
-            return "Error: Could not extract any content from the provided chunks."
+            return {
+                'answer': "Error: Could not extract any content from the provided chunks.",
+                'reasoning': "",
+                'model_certainty': "Low - Content extraction failed"
+            }
         
         context = "\n---\n".join(context_parts)
 
         # Get actual page range
-        min_page = min(page_numbers)
-        max_page = max(page_numbers)
         page_list = ", ".join(str(p) for p in sorted(page_numbers))
         
-        # Create prompt
-        prompt = f"""You are a helpful assistant analyzing a book. Based on the following excerpts from the book, answer the user's question comprehensively.
-
-                Question: {query}
-
-                Available excerpts from pages {min_page} to {max_page}:
-
-                {context}
-
-                CRITICAL CITATION RULES:
-                1. ONLY cite pages that appear in the excerpts above: {page_list}
-                2. DO NOT cite any other page numbers - if you do, you will be penalized
-                3. When referencing information, use the EXACT page number shown in [Page X] tags
-                4. If information spans multiple excerpts, cite all relevant pages
-                5. If you cannot find the answer in the provided excerpts, say so clearly
-
-                Instructions:
-                1. Provide a comprehensive answer based ONLY on the excerpts above
-                2. Cite specific pages using this format: "According to page X..." or "(page X)"
-                3. Only use page numbers from this list: {page_list}
-                4. Be specific and detailed in your response
-                5. If the excerpts don't fully answer the question, acknowledge what's missing
-
-                Answer:"""
+        # Format conversation history
+        conversation_context = self.format_conversation_context()
+        history_section = f"\n\nPrevious Conversation:\n{conversation_context}\n" if conversation_context else ""
         
-        print("Generating answer...")
-        print(f"Prompt length: {len(prompt)} characters")
+        # Create enhanced prompt with chain-of-thought
+        prompt = f"""You are analyzing a book to answer questions. Think step-by-step and show your reasoning.
+
+{history_section}
+Current Question: {query}
+
+Available excerpts from pages {page_list}:
+
+{context}
+
+═══════════════════════════════════════════════════════════════
+YOUR ANSWER MUST INCLUDE:
+═══════════════════════════════════════════════════════════════
+
+1. ✓ MULTIPLE PARAGRAPHS (minimum 3-4 for any substantive question)
+2. ✓ SPECIFIC DETAILS from the text (names, numbers, technical terms, examples)
+3. ✓ FULL EXPLANATIONS of concepts (don't just name them, explain HOW and WHY)
+4. ✓ CONTEXT and BACKGROUND information
+5. ✓ CONNECTIONS between ideas
+6. ✓ EXAMPLES from the text when available
+7. ✓ IMPLICATIONS or significance of the information
+8. ✓ DEPTH - elaborate on key points, don't skim the surface
+9. ✓ PAGE CITATIONS throughout (after each claim)
+10. ✓ ORGANIZED STRUCTURE with clear flow
+
+═══════════════════════════════════════════════════════════════
+STEP-BY-STEP INSTRUCTIONS:
+═══════════════════════════════════════════════════════════════
+
+1. REASONING SECTION:
+   - Identify ALL relevant information in the excerpts
+   - Note key concepts, terms, and relationships
+   - Plan a comprehensive answer structure
+   - Consider what context is needed
+
+2. ANSWER SECTION:
+   - START with an overview or main point
+   - DEVELOP with 3-5 detailed paragraphs covering:
+     * Background and context
+     * Main concepts with full explanations
+     * Specific examples and details from the text
+     * Relationships between ideas
+     * Implications or significance
+   - USE the format: "According to page X..." or "(page X)"
+   - CITE pages: {page_list}
+   - ELABORATE on each point - don't just list facts
+   - EXPLAIN the "why" and "how", not just the "what"
+   - CONNECT different pieces of information
+   - If the excerpts cover multiple aspects, discuss ALL of them
+   - GO in detail. Don't forget to mention all of the details that explain the why. 
+
+3. CERTAINTY SECTION:
+   - Rate: High/Medium/Low
+   - Explain based on information quality and completeness
+
+═══════════════════════════════════════════════════════════════
+
+Format your response EXACTLY as follows:
+
+REASONING:
+[Thorough analysis: What is being asked? What information is available? How can I provide a comprehensive answer? What structure will be most clear?]
+
+ANSWER:
+[Your DETAILED, MULTI-PARAGRAPH answer here. Remember:
+- Minimum 3-4 substantial paragraphs
+- Full explanations with context
+- Specific details and examples
+- Page citations throughout
+- Depth over brevity
+- Cover all relevant aspects]
+
+CERTAINTY:
+[High/Medium/Low with explanation]
+
+Begin your response:"""
+        
+        print("Generating answer with chain-of-thought...")
+        print(f"Context length: {len(context)} characters")
         print(f"Available pages: {page_list}")
         
-        # Call Ollama
+        # Call Ollama with longer timeout for 3b model
         try:
             start_time = time.time()
 
@@ -724,36 +897,78 @@ class BookRAGSystem:
                     "prompt": prompt,
                     "stream": False,
                     "options": {
-                        "temperature": 0.2,
-                        "num_predict": 800,
-                        "num_ctx": 4096
+                        "temperature": 0.4,  # Slightly higher for reasoning
+                        "num_predict": 4000,  # More tokens for reasoning + answer
+                        "num_ctx": 8192
                     }
                 },
-                timeout=180
+                timeout=180  # 3 minutes for 3b model
             )
 
             elapsed = time.time() - start_time
             
             if response.status_code == 200:
-                answer = response.json()['response'].strip()
-                # Validate and fix page citations
+                full_response = response.json()['response'].strip()
+                
+                # Parse the structured response
+                reasoning = ""
+                answer = ""
+                model_certainty = ""
+                
+                # Extract sections using string splitting
+                parts = full_response.split("ANSWER:")
+                if len(parts) > 1:
+                    # Extract reasoning
+                    reasoning_part = parts[0].replace("REASONING:", "").strip()
+                    reasoning = reasoning_part
+                    
+                    # Extract answer and certainty
+                    answer_parts = parts[1].split("CERTAINTY:")
+                    answer = answer_parts[0].strip()
+                    
+                    if len(answer_parts) > 1:
+                        model_certainty = answer_parts[1].strip()
+                else:
+                    # Fallback if format not followed perfectly
+                    answer = full_response
+                    reasoning = "Model did not provide explicit reasoning."
+                    model_certainty = "Unknown"
+                
+                # Validate citations
                 answer = self.validate_page_citations(answer, page_numbers)
                 
                 print(f"Answer generated in {elapsed:.2f} seconds")
-                print(f"Answer length: {len(answer)} characters")\
-
-                return answer
+                print(f"Answer length: {len(answer)} characters")
+                
+                return {
+                    'answer': answer,
+                    'reasoning': reasoning,
+                    'model_certainty': model_certainty
+                }
             else:
-                return f"Error: {response.status_code}"
+                return {
+                    'answer': f"Error: {response.status_code}",
+                    'reasoning': "",
+                    'model_certainty': "Low - Error occurred"
+                }
+                
         except requests.exceptions.Timeout:
             elapsed = time.time() - start_time
             print(f"TIMEOUT after {elapsed:.2f} seconds")
-            return "Error: Request timed out. Try a simpler question or reduce context."
+            return {
+                'answer': "Error: Request timed out. The 3b model may need more time. Try a simpler question.",
+                'reasoning': "Request timed out before completion",
+                'model_certainty': "Low - Timeout"
+            }
     
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return f"Error generating answer: {e}"
+            return {
+                'answer': f"Error generating answer: {e}",
+                'reasoning': "",
+                'model_certainty': "Low - Exception occurred"
+            }
 
     def validate_page_citations(self, answer: str, valid_pages: set) -> str:
         """
@@ -770,7 +985,6 @@ class BookRAGSystem:
         import re
         
         # Find all page citations in various formats
-        # Matches: "page 12", "Page 12", "p. 12", "(page 12)", etc.
         citation_patterns = [
             r'\bpage\s+(\d+)\b',
             r'\bPage\s+(\d+)\b',
@@ -796,7 +1010,7 @@ class BookRAGSystem:
             unique_invalid = sorted(set(invalid_citations))
             valid_page_list = ", ".join(str(p) for p in sorted(valid_pages))
             
-            warning = f"\n\nNote: This answer may reference pages not in the analyzed sections. Only pages {valid_page_list} were consulted for this response."
+            warning = f"\n\n⚠️ Note: This answer may reference pages not in the analyzed sections. Only pages {valid_page_list} were consulted for this response."
             corrected_answer += warning
             
             print(f"Warning: Found citations to invalid pages: {unique_invalid}")
@@ -804,23 +1018,68 @@ class BookRAGSystem:
         
         return corrected_answer
     
+    def add_to_conversation_history(
+        self, 
+        question: str, 
+        answer: str, 
+        reasoning: str,
+        pages: List[int], 
+        confidence_score: float
+    ):
+        """
+        NEW: Add Q&A pair to conversation history
+        
+        Args:
+            question: User's question
+            answer: Generated answer
+            reasoning: Chain-of-thought reasoning
+            pages: Pages referenced
+            confidence_score: Confidence score
+        """
+        from datetime import datetime
+        
+        self.conversation_history.append({
+            'question': question,
+            'answer': answer,
+            'reasoning': reasoning,
+            'pages': pages,
+            'confidence_score': confidence_score,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+        # Keep only last 5 conversations to prevent memory bloat
+        if len(self.conversation_history) > 5:
+            self.conversation_history = self.conversation_history[-5:]
+    
+    def clear_conversation_history(self):
+        """NEW: Clear conversation history"""
+        self.conversation_history = []
+        print("🗑️ Conversation history cleared")
+    
+    def get_conversation_history(self) -> List[Dict]:
+        """NEW: Get conversation history"""
+        return self.conversation_history
+    
     def query(self, question: str, top_k: int = 10) -> Dict:
         """
-        Main query interface with intelligent routing
+        ENHANCED: Main query interface with intelligent routing, confidence scoring, and CoT
         
         Args:
             question: User's question
             top_k: Number of relevant chunks (overridden by query type detection)
             
         Returns:
-            Dictionary with answer, sources, and metadata
+            Dictionary with answer, reasoning, confidence, sources, and metadata
         """
         if not self.index_built:
             return {
                 "error": "Index not built. Call build_index() first.",
                 "answer": "Please load a book first.",
+                "reasoning": "",
                 "sources": [],
-                "pages": []
+                "pages": [],
+                "confidence_score": 0.0,
+                "confidence_explanation": "No book loaded"
             }
         
         try:
@@ -835,8 +1094,11 @@ class BookRAGSystem:
             if not relevant_chunks:
                 return {
                     "answer": "No relevant information found in the document for this query.",
+                    "reasoning": "No matching content found in semantic search.",
                     "sources": [],
                     "pages": [],
+                    "confidence_score": 0.0,
+                    "confidence_explanation": "No relevant content found",
                     "query_type": query_info['type']
                 }
             
@@ -846,8 +1108,19 @@ class BookRAGSystem:
             for i, (chunk, score) in enumerate(relevant_chunks[:3], 1):
                 print(f"  {i}. Page {chunk.page_number} (similarity: {score:.3f})")
             
-            # Generate answer
-            answer = self.generate_answer(question, relevant_chunks)
+            # Extract similarity scores for confidence calculation
+            similarities = [score for _, score in relevant_chunks]
+            context_length = sum(len(chunk.text) for chunk, _ in relevant_chunks)
+            
+            # Calculate confidence score
+            confidence_score, confidence_explanation = self.calculate_confidence_score(
+                similarities, context_length
+            )
+            
+            print(f"Confidence: {confidence_score:.0%} - {confidence_explanation}")
+            
+            # Generate answer with chain-of-thought
+            response = self.generate_answer(question, relevant_chunks)
             
             # Extract source information
             pages = sorted(set([chunk.page_number for chunk, _ in relevant_chunks]))
@@ -860,12 +1133,26 @@ class BookRAGSystem:
                 for chunk, score in relevant_chunks[:5]
             ]
             
+            # Add to conversation history
+            self.add_to_conversation_history(
+                question=question,
+                answer=response['answer'],
+                reasoning=response.get('reasoning', ''),
+                pages=pages,
+                confidence_score=confidence_score
+            )
+            
             return {
-                "answer": answer,
+                "answer": response['answer'],
+                "reasoning": response.get('reasoning', ''),
+                "model_certainty": response.get('model_certainty', ''),
                 "sources": sources,
                 "pages": pages,
                 "total_chunks_used": len(relevant_chunks),
-                "query_type": query_info['type']
+                "query_type": query_info['type'],
+                "confidence_score": confidence_score,
+                "confidence_explanation": confidence_explanation,
+                "similarity_scores": [f"{s:.2f}" for s in similarities[:5]]
             }
         
         except Exception as e:
@@ -873,22 +1160,27 @@ class BookRAGSystem:
             traceback.print_exc()
             return {
                 "answer": f"Error processing query: {str(e)}",
+                "reasoning": "",
                 "sources": [],
                 "pages": [],
-                "error": str(e)
+                "error": str(e),
+                "confidence_score": 0.0,
+                "confidence_explanation": "Error occurred"
             }
+
 
 def main():
     """Example usage"""
     import sys
     
     print("="*80)
-    print("Book RAG System - Query Large PDFs with Ollama")
+    print("SmartReader Enhanced - Query Large PDFs with Ollama")
+    print("Features: llama3.2:3b • Chain-of-Thought • Confidence Scoring • Multi-Turn Context")
     print("="*80)
     
     # Initialize system
     rag = BookRAGSystem(
-        model_name="llama3.2:1b",
+        model_name="llama3.2:3b",  # Enhanced model
         embedding_model="nomic-embed-text"
     )
     
@@ -912,10 +1204,14 @@ def main():
     # Interactive query loop
     while True:
         print("\n" + "-"*80)
-        query = input("\nYour question (or 'quit' to exit): ").strip()
+        query = input("\nYour question (or 'quit' to exit, 'clear' to reset history): ").strip()
         
         if query.lower() in ['quit', 'exit', 'q']:
             break
+        
+        if query.lower() == 'clear':
+            rag.clear_conversation_history()
+            continue
         
         if not query:
             continue
@@ -925,13 +1221,42 @@ def main():
         
         # Display results
         print("\n" + "="*80)
-        print("ANSWER:")
+        
+        # Show reasoning if available
+        if result.get('reasoning'):
+            print("🧠 REASONING:")
+            print("="*80)
+            print(result['reasoning'])
+            print("\n" + "="*80)
+        
+        print("💬 ANSWER:")
         print("="*80)
         print(result['answer'])
         
+        # Show confidence
+        if 'confidence_score' in result:
+            score = result['confidence_score']
+            if score > 0.7:
+                icon = "✅"
+            elif score > 0.4:
+                icon = "⚠️"
+            else:
+                icon = "❌"
+            print(f"\n{icon} Confidence: {score:.0%} - {result.get('confidence_explanation', '')}")
+        
+        # Show model certainty
+        if result.get('model_certainty'):
+            print(f"🤖 Model certainty: {result['model_certainty']}")
+        
         print("\n" + "-"*80)
-        print(f"Sources: Pages {', '.join(map(str, result['pages']))}")
-        print(f"Used {result['total_chunks_used']} relevant sections")
+        print(f"📄 Sources: Pages {', '.join(map(str, result['pages']))}")
+        print(f"📊 Used {result['total_chunks_used']} relevant sections")
+        print(f"🔍 Query type: {result.get('query_type', 'unknown')}")
+        
+        # Show conversation count
+        history = rag.get_conversation_history()
+        if len(history) > 1:
+            print(f"💬 Conversation turn: {len(history)}")
         
         # Option to see sources
         show_sources = input("\nShow source excerpts? (y/n): ").lower()
