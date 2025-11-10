@@ -10,7 +10,7 @@ import sys
 import os
 from pathlib import Path
 
-VERSION = "v1.1.3"
+VERSION = "v2.0"
 
 
 def get_config_dir():
@@ -49,10 +49,105 @@ def mark_setup_complete():
     config_file = os.path.join(get_config_dir(), 'setup_complete.flag')
     try:
         with open(config_file, 'w') as f:
-            f.write('Setup completed successfully')
+            f.write(f'Setup completed successfully - {VERSION}')
         print(f"Setup marked complete: {config_file}")
     except Exception as e:
         print(f"Warning: Could not create setup flag: {e}")
+
+
+def is_upgraded_from_v1():
+    """
+    Check if this is an upgrade from v1.x to v2.0
+    
+    Returns:
+        True if upgrading from v1, False otherwise
+    """
+    config_file = os.path.join(get_config_dir(), 'setup_complete.flag')
+    if not os.path.exists(config_file):
+        return False
+    
+    try:
+        with open(config_file, 'r') as f:
+            content = f.read()
+            # Check if file contains old version string
+            if 'v1.' in content or 'Setup completed successfully' == content.strip():
+                return True
+    except:
+        pass
+    
+    return False
+
+
+def mark_migration_shown():
+    """Mark that migration notice has been shown"""
+    config_file = os.path.join(get_config_dir(), 'migration_v2_shown.flag')
+    try:
+        with open(config_file, 'w') as f:
+            f.write('Migration notice shown')
+        print("Migration notice marked as shown")
+    except Exception as e:
+        print(f"Warning: Could not create migration flag: {e}")
+
+
+def should_show_migration_notice():
+    """Check if we should show the migration notice"""
+    if not is_upgraded_from_v1():
+        return False
+    
+    # Check if we've already shown it
+    config_file = os.path.join(get_config_dir(), 'migration_v2_shown.flag')
+    return not os.path.exists(config_file)
+
+
+def show_migration_notice():
+    """Show migration notice for v1 -> v2 upgrade"""
+    response = messagebox.askyesnocancel(
+        "SmartReader v2.0",
+        "Welcome to SmartReader v2.0!\n\n"
+        "NEW FEATURES:\n"
+        "🧠 Chain-of-Thought Reasoning\n"
+        "📊 Confidence Scoring\n"
+        "💬 Multi-Turn Conversations\n"
+        "⚡ llama3.2:3b Model (smarter!)\n\n"
+        "RECOMMENDED: Clear your old cache to take advantage\n"
+        "of the new 3b model. Books will need to be re-indexed\n"
+        "once (10-15 min for large books).\n\n"
+        "Clear cache now and start fresh?\n\n"
+        "[Yes] = Clear cache & proceed\n"
+        "[No] = Keep old cache\n"
+        "[Cancel] = Don't ask again"
+    )
+    
+    mark_migration_shown()
+    
+    if response is True:
+        # User wants to clear cache
+        try:
+            from ollama_book_rag import BookRAGSystem
+            rag = BookRAGSystem(model_name="llama3.2:3b")
+            rag.clear_cache()
+            messagebox.showinfo(
+                "Cache Cleared",
+                "Old cache cleared successfully!\n\n"
+                "Your books will be re-indexed with the\n"
+                "enhanced 3b model when you load them."
+            )
+        except Exception as e:
+            messagebox.showwarning(
+                "Cache Clear Failed",
+                f"Could not clear cache automatically:\n{e}\n\n"
+                "You can clear it manually via Tools → Clear Cache"
+            )
+    elif response is False:
+        # User wants to keep old cache
+        messagebox.showinfo(
+            "Using Existing Cache",
+            "Your existing cache will be preserved.\n\n"
+            "Note: Old caches use the 1b model.\n"
+            "For best results, consider clearing the\n"
+            "cache via Tools → Clear Cache."
+        )
+    # else: Cancel - don't ask again (already marked)
 
 
 def check_ollama_installed():
@@ -100,6 +195,7 @@ def check_ollama_installed():
 def check_models_downloaded():
     """
     Check if required AI models are downloaded
+    ENHANCED: Now checks for llama3.2:3b instead of 1b
     
     Returns:
         True if both required models exist, False otherwise
@@ -123,7 +219,8 @@ def check_models_downloaded():
         
         if result.returncode == 0:
             output = result.stdout
-            has_llama = "llama3.2:1b" in output
+            # ENHANCED: Check for 3b model
+            has_llama = "llama3.2:3b" in output or "llama3.2" in output
             has_embed = "nomic-embed-text" in output
             
             if has_llama and has_embed:
@@ -132,7 +229,7 @@ def check_models_downloaded():
             else:
                 missing = []
                 if not has_llama:
-                    missing.append("llama3.2:1b")
+                    missing.append("llama3.2:3b")
                 if not has_embed:
                     missing.append("nomic-embed-text")
                 print(f"Missing models: {', '.join(missing)}")
@@ -238,6 +335,10 @@ def launch_main_app():
     """Launch the main application"""
     print("Launching main application...")
     
+    # Show migration notice if upgrading from v1
+    if should_show_migration_notice():
+        show_migration_notice()
+    
     # Ensure Ollama is running
     if not ensure_ollama_running():
         response = messagebox.askyesno(
@@ -259,10 +360,9 @@ def launch_main_app():
                 )
                 sys.exit(0)
     
-    # Launch main GUI
+    # Launch GUI
     try:
         import book_rag_gui
-        
         root = tk.Tk()
         app = book_rag_gui.BookRAGApp(root)
         root.mainloop()
@@ -271,7 +371,11 @@ def launch_main_app():
         messagebox.showerror(
             "File Not Found",
             f"Could not find book_rag_gui.py\n\n{e}\n\n"
-            "Make sure all files are in the same folder."
+            "Make sure all files are in the same folder.\n\n"
+            "Required files:\n"
+            "- main_launcher.py\n"
+            "- book_rag_gui_enhanced.py\n"
+            "- ollama_book_rag.py"
         )
         sys.exit(1)
     except Exception as e:
@@ -279,6 +383,8 @@ def launch_main_app():
             "Launch Error",
             f"An error occurred launching SmartReader:\n\n{e}"
         )
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 
@@ -291,24 +397,24 @@ def show_splash_screen():
     """
     splash = tk.Tk()
     splash.title("SmartReader")
-    splash.geometry("450x350")
+    splash.geometry("450x380")  # Slightly taller for enhanced features
     splash.resizable(False, False)
-    splash.configure(bg='#4a90e2')
+    splash.configure(bg='#667eea')  # Updated color scheme
     
     # Center window on screen
     splash.update_idletasks()
     x = (splash.winfo_screenwidth() - 450) // 2
-    y = (splash.winfo_screenheight() - 350) // 2
-    splash.geometry(f'450x350+{x}+{y}')
+    y = (splash.winfo_screenheight() - 380) // 2
+    splash.geometry(f'450x380+{x}+{y}')
     
     # Remove window decorations for cleaner look
     splash.overrideredirect(True)
     
     # Add a border
-    border = tk.Frame(splash, bg='#2c5aa0', bd=0)
+    border = tk.Frame(splash, bg='#5568d3', bd=0)
     border.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
     
-    content = tk.Frame(border, bg='#4a90e2')
+    content = tk.Frame(border, bg='#667eea')
     content.pack(fill=tk.BOTH, expand=True)
     
     # Logo
@@ -316,16 +422,16 @@ def show_splash_screen():
         content,
         text="📚",
         font=('Arial', 70),
-        bg='#4a90e2',
+        bg='#667eea',
         fg='white'
-    ).pack(pady=(60, 15))
+    ).pack(pady=(50, 15))
     
     # App name
     tk.Label(
         content,
         text="SmartReader",
         font=('Arial', 28, 'bold'),
-        bg='#4a90e2',
+        bg='#667eea',
         fg='white'
     ).pack(pady=(0, 5))
     
@@ -334,27 +440,41 @@ def show_splash_screen():
         content,
         text="AI-Powered Book Assistant",
         font=('Arial', 12),
-        bg='#4a90e2',
+        bg='#667eea',
         fg='white'
-    ).pack(pady=(0, 40))
+    ).pack(pady=(0, 20))
+    
+    # Enhanced features
+    features_frame = tk.Frame(content, bg='#667eea')
+    features_frame.pack(pady=(0, 20))
+    
+    features = ["🧠 Chain-of-Thought", "📊 Confidence Scores", "💬 Multi-Turn Context"]
+    for feature in features:
+        tk.Label(
+            features_frame,
+            text=feature,
+            font=('Arial', 9),
+            bg='#667eea',
+            fg='white'
+        ).pack()
     
     # Loading message
     tk.Label(
         content,
         text="Initializing...",
         font=('Arial', 11),
-        bg='#4a90e2',
+        bg='#667eea',
         fg='white'
-    ).pack()
+    ).pack(pady=(10, 0))
     
     # Version
     tk.Label(
         content,
         text=VERSION,
         font=('Arial', 8),
-        bg='#4a90e2',
-        fg='#a0c4ff'
-    ).pack(side=tk.BOTTOM, pady=20)
+        bg='#667eea',
+        fg='#c4d7ff'
+    ).pack(side=tk.BOTTOM, pady=15)
     
     splash.update()
     return splash
@@ -372,7 +492,7 @@ def main():
     
     try:
         import time
-        time.sleep(1)  # Show splash for at least 1 second
+        time.sleep(1.5)  # Show splash a bit longer to show features
         
         # Check if setup has been completed before
         if is_setup_complete():
@@ -391,10 +511,19 @@ def main():
                 # Something is broken - offer to re-run setup
                 splash.destroy()
                 
+                # Check what's missing
+                if not ollama_ok:
+                    missing_msg = "Ollama is not installed or not accessible."
+                elif not models_ok:
+                    missing_msg = "Required AI models (llama3.2:3b, nomic-embed-text) are not installed."
+                else:
+                    missing_msg = "Some required components are missing."
+                
                 response = messagebox.askyesno(
                     "Setup Issue Detected",
-                    "Some required components are missing or not working properly.\n\n"
-                    "Would you like to run the setup wizard again to fix this?"
+                    f"{missing_msg}\n\n"
+                    "Would you like to run the setup wizard again to fix this?\n\n"
+                    "Note: SmartReader requires llama3.2:3b model."
                 )
                 
                 if response:
@@ -404,7 +533,8 @@ def main():
                     messagebox.showinfo(
                         "Launching Anyway",
                         "SmartReader will try to launch, but some features may not work.\n\n"
-                        "If you have problems, please run the setup wizard."
+                        "If you have problems, please run the setup wizard or install:\n"
+                        "ollama pull llama3.2:3b"
                     )
                     launch_main_app()
         else:
@@ -428,7 +558,11 @@ def main():
             "Startup Error",
             f"SmartReader encountered an error during startup:\n\n{e}\n\n"
             "Please try restarting the application.\n\n"
-            "If this problem persists, please contact support."
+            "If this problem persists, please check that:\n"
+            "1. Ollama is installed (ollama.com)\n"
+            "2. Required models are installed:\n"
+            "   ollama pull llama3.2:3b\n"
+            "   ollama pull nomic-embed-text"
         )
         sys.exit(1)
 
