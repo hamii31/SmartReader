@@ -27,7 +27,7 @@ class SetupWizard:
         
         # Colors
         self.colors = {
-            'primary': '#4a90e2',
+            'primary': '#667eea',  # Updated to match the new version
             'success': '#5cb85c',
             'warning': '#f0ad4e',
             'danger': '#d9534f',
@@ -51,12 +51,16 @@ class SetupWizard:
         main.pack(fill=tk.BOTH, expand=True)
         
         # Header
-        header = tk.Frame(main, bg=self.colors['primary'], height=80)
+        header = tk.Frame(main, bg=self.colors['primary'], height=100)  # Taller for enhanced branding
         header.pack(fill=tk.X)
         header.pack_propagate(False)
         
-        tk.Label(header, text="SmartReader Setup", font=('Arial', 24, 'bold'),
-                 bg=self.colors['primary'], fg='white').pack(expand=True)
+        # ENHANCED: Show version in header
+        tk.Label(header, text="SmartReader", font=('Arial', 24, 'bold'),
+                 bg=self.colors['primary'], fg='white').pack(expand=True, pady=(15, 5))
+        
+        tk.Label(header, text="Setup Wizard", font=('Arial', 12),
+                 bg=self.colors['primary'], fg='#e0e7ff').pack()
         
         # Content area (scrollable)
         content_frame = tk.Frame(main, bg='white')
@@ -174,8 +178,22 @@ class SetupWizard:
         tk.Label(self.scrollable_frame, text="Welcome to SmartReader!",
                 font=('Arial', 22, 'bold'), bg='white').pack(pady=(20, 10))
         
-        tk.Label(self.scrollable_frame, text="Your AI-powered book assistant",
-                font=('Arial', 12), bg='white', fg='#666').pack(pady=(0, 30))
+        tk.Label(self.scrollable_frame, text="AI-powered book assistant with advanced features",
+                font=('Arial', 12), bg='white', fg='#666').pack(pady=(0, 20))
+        
+        # ENHANCED: Show new features
+        features_box = tk.Frame(self.scrollable_frame, bg='#f0f4ff', relief=tk.SOLID, borderwidth=1)
+        features_box.pack(fill=tk.X, pady=15)
+        
+        features_text = """✨ Enhanced Features:
+
+  🧠  Chain-of-Thought Reasoning - See how the AI thinks
+  📊  Confidence Scoring - Know when to trust answers
+  💬  Multi-Turn Conversations - Natural follow-up questions
+  ⚡  llama3.2:3b Model - Smarter, more accurate responses"""
+        
+        tk.Label(features_box, text=features_text, font=('Arial', 10),
+                bg='#f0f4ff', justify=tk.LEFT).pack(padx=25, pady=15)
         
         # Info box
         info = tk.Frame(self.scrollable_frame, bg='#e8f4f8', relief=tk.SOLID, borderwidth=1)
@@ -184,14 +202,14 @@ class SetupWizard:
         info_text = """This setup wizard will:
 
   •  Install Ollama (AI engine)
-  •  Download language models (~1.5 GB)
+  •  Download models (~2.5 GB)
   •  Configure everything for you
 
 After setup, you'll be able to:
 
   •  Upload any PDF book or document
   •  Ask questions in plain English
-  •  Get instant answers with page citations
+  •  Get instant answers with reasoning and confidence scores
   •  Work completely offline and privately"""
         
         tk.Label(info, text=info_text, font=('Arial', 10),
@@ -201,12 +219,13 @@ After setup, you'll be able to:
         tk.Label(self.scrollable_frame, text="Requirements",
                 font=('Arial', 11, 'bold'), bg='white', fg='#ff6600').pack(anchor='w', pady=(20, 10))
         
+        # ENHANCED: Updated requirements for 3b model
         requirements = [
             "Windows 10 or Windows 11",
-            "4GB RAM minimum (8GB recommended)",
-            "5GB free disk space",
+            "8GB RAM minimum (16GB recommended for 3b model)",
+            "6GB free disk space",
             "Internet connection (for initial setup only)",
-            "Estimated setup time: 10-15 minutes"
+            "Estimated setup time: 15-20 minutes"
         ]
         
         for req in requirements:
@@ -261,14 +280,14 @@ After setup, you'll be able to:
             if self.ollama_installed:
                 version = result.stdout.decode().strip()
                 self.root.after(0, lambda: self.ollama_status.config(
-                    text=f"Ollama is installed ({version})", fg=self.colors['success']))
+                    text=f"✅  Ollama is installed ({version})", fg=self.colors['success']))
             else:
                 self.root.after(0, lambda: self.ollama_status.config(
-                    text="Ollama is not installed", fg=self.colors['danger']))
+                    text="❌  Ollama is not installed", fg=self.colors['danger']))
         except:
             self.ollama_installed = False
             self.root.after(0, lambda: self.ollama_status.config(
-                text="Ollama is not installed", fg=self.colors['danger']))
+                text="❌  Ollama is not installed", fg=self.colors['danger']))
         
         # Check models (only if Ollama is installed)
         if self.ollama_installed:
@@ -277,28 +296,28 @@ After setup, you'll be able to:
                 result = subprocess.run(['ollama', 'list'], capture_output=True, timeout=5)
                 output = result.stdout.decode()
                 
-                # Check for llama3.2:1b specifically
-                has_llama = 'llama3.2:1b' in output or 'llama3.2' in output
+                # ENHANCED: Check for llama3.2:3b specifically
+                has_llama = 'llama3.2:3b' in output or ('llama3.2' in output and '3b' in output)
                 has_embed = 'nomic-embed-text' in output
                 self.models_downloaded = has_llama and has_embed
                 
                 if self.models_downloaded:
                     self.root.after(0, lambda: self.models_status.config(
-                        text="AI models are installed (llama3.2:1b, nomic-embed-text)", 
+                        text="✅  AI models are installed (llama3.2:3b, nomic-embed-text)", 
                         fg=self.colors['success']))
                 else:
                     missing = []
-                    if not has_llama: missing.append('llama3.2:1b')
+                    if not has_llama: missing.append('llama3.2:3b')
                     if not has_embed: missing.append('nomic-embed-text')
                     self.root.after(0, lambda m=missing: self.models_status.config(
-                        text=f"Missing models: {', '.join(m)}", fg=self.colors['danger']))
+                        text=f"❌  Missing models: {', '.join(m)}", fg=self.colors['danger']))
             except:
                 self.models_downloaded = False
                 self.root.after(0, lambda: self.models_status.config(
-                    text="AI models are not installed", fg=self.colors['danger']))
+                    text="❌  AI models are not installed", fg=self.colors['danger']))
         else:
             self.root.after(0, lambda: self.models_status.config(
-                text="Skipped (Ollama not installed)", fg='#999'))
+                text="⏭️  Skipped (Ollama not installed)", fg='#999'))
         
         # Show overall result
         self.root.after(0, self.finish_check)
@@ -306,17 +325,17 @@ After setup, you'll be able to:
     def finish_check(self):
         if self.ollama_installed and self.models_downloaded:
             self.overall_status.config(
-                text="Everything is ready! Click Next to finish.",
+                text="✅  Everything is ready! Click Next to finish.",
                 fg=self.colors['success'])
             self.current_step = 3  # Skip to completion
         elif self.ollama_installed and not self.models_downloaded:
             self.overall_status.config(
-                text="Need to download AI models. Click Next to continue.",
+                text="⚠️  Need to download AI models. Click Next to continue.",
                 fg=self.colors['warning'])
             self.current_step = 2  # Skip Ollama install
         else:
             self.overall_status.config(
-                text="Need to install Ollama and models. Click Next to continue.",
+                text="⚠️  Need to install Ollama and models. Click Next to continue.",
                 fg=self.colors['warning'])
         
         self.next_button.config(state=tk.NORMAL)
@@ -362,22 +381,29 @@ After setup, you'll be able to:
     
     # ==================== STEP 4: DOWNLOAD MODELS (AUTOMATED) ====================
     def step_download_models(self):
-        tk.Label(self.scrollable_frame, text="Download AI Models",
+        tk.Label(self.scrollable_frame, text="Download Enhanced AI Models",
                 font=('Arial', 20, 'bold'), bg='white').pack(pady=(30, 15))
         
-        tk.Label(self.scrollable_frame, text="Downloading optimized models (~1.5 GB total)",
+        # ENHANCED: Updated download size for 3b model
+        tk.Label(self.scrollable_frame, text="Downloading enhanced models (~2.5 GB total)",
                 font=('Arial', 11), bg='white', fg='#666').pack(pady=(0, 20))
         
         # Info box
         info = tk.Frame(self.scrollable_frame, bg='#e8f4f8', relief=tk.SOLID, borderwidth=1)
         info.pack(fill=tk.X, pady=15)
         
-        info_text = """Models being downloaded:
+        # ENHANCED: Updated model info
+        info_text = """Enhanced models being downloaded:
 
-  •  llama3.2:1b (1.3 GB) - Fast generation model
+  •  llama3.2:3b (2.0 GB) - Advanced reasoning model
   •  nomic-embed-text (274 MB) - Semantic search
 
-This may take 5-10 minutes depending on your internet speed."""
+Features:
+  🧠  Better reasoning and chain-of-thought
+  📊  More accurate confidence scoring
+  💬  Improved conversation understanding
+
+This may take 10-15 minutes depending on your internet speed."""
         
         tk.Label(info, text=info_text, font=('Arial', 10),
                 bg='#e8f4f8', justify=tk.LEFT).pack(padx=25, pady=15)
@@ -405,17 +431,18 @@ This may take 5-10 minutes depending on your internet speed."""
     
     def download_models_thread(self):
         """Download models automatically"""
+        # ENHANCED: Updated to download 3b model
         models = [
-            ("llama3.2:1b", "Generation model"),
-            ("nomic-embed-text", "Embedding model")
+            ("llama3.2:3b", "Enhanced generation model (2.0 GB)"),
+            ("nomic-embed-text", "Embedding model (274 MB)")
         ]
         
         for i, (model, description) in enumerate(models, 1):
             try:
                 # Update status
-                self.root.after(0, lambda m=model, d=description: 
+                self.root.after(0, lambda m=model, d=description, idx=i, total=len(models): 
                     self.download_status.config(
-                        text=f"Downloading {m}\n({d}) - {i}/{len(models)}"
+                        text=f"Downloading {m}\n{d}\nModel {idx} of {total}"
                     ))
                 
                 # Download model
@@ -424,7 +451,7 @@ This may take 5-10 minutes depending on your internet speed."""
                     ['ollama', 'pull', model],
                     capture_output=True,
                     text=True,
-                    timeout=600  # 10 minute timeout
+                    timeout=900  # 15 minute timeout for 3b model
                 )
                 
                 if result.returncode == 0:
@@ -450,7 +477,7 @@ This may take 5-10 minutes depending on your internet speed."""
         """Called when all models are downloaded"""
         self.download_progress.stop()
         self.download_status.config(
-            text="All models downloaded successfully!",
+            text="✅  All models downloaded successfully!",
             fg=self.colors['success']
         )
         
@@ -467,7 +494,7 @@ This may take 5-10 minutes depending on your internet speed."""
         """Called when download fails"""
         self.download_progress.stop()
         self.download_status.config(
-            text=f"Failed to download {model}",
+            text=f"❌  Failed to download {model}",
             fg=self.colors['danger']
         )
         
@@ -501,30 +528,37 @@ Please try:
         tk.Label(self.scrollable_frame, text="SmartReader is ready to use!",
                 font=('Arial', 13), bg='white', fg='#666').pack(pady=(0, 30))
         
-        # Features box
+        # ENHANCED: Updated features box
         features_box = tk.Frame(self.scrollable_frame, bg='#e8f8e8',
                                relief=tk.SOLID, borderwidth=1)
         features_box.pack(fill=tk.X, pady=15)
         
+        tk.Label(features_box, text="✨ Enhanced Features Ready:",
+                font=('Arial', 11, 'bold'), bg='#e8f8e8',
+                anchor='w').pack(padx=30, pady=(15, 10), fill=tk.X)
+        
         features = [
-            "Upload any PDF book or document",
-            "Ask questions in plain English",
-            "Get instant, cited answers (20-30 seconds)",
-            "Work completely offline",
-            "100% private - no data leaves your computer",
-            "Optimized for fast CPU performance"
+            "🧠  Chain-of-Thought - See AI's reasoning process",
+            "📊  Confidence Scores - Know when to trust answers",
+            "💬  Multi-Turn Context - Natural follow-up questions",
+            "⚡  llama3.2:3b Model - Smarter, more accurate",
+            "📄  Upload any PDF book or document",
+            "🔒  100% private - no data leaves your computer",
+            "⚡  Optimized CPU performance (40-60s per query)"
         ]
         
         for feature in features:
-            tk.Label(features_box, text=feature, font=('Arial', 11),
-                    bg='#e8f8e8', anchor='w').pack(padx=30, pady=5, fill=tk.X)
+            tk.Label(features_box, text=feature, font=('Arial', 10),
+                    bg='#e8f8e8', anchor='w').pack(padx=40, pady=3, fill=tk.X)
         
-        tk.Label(self.scrollable_frame, text="Click 'Launch' to start using SmartReader!",
+        tk.Label(features_box, text="", bg='#e8f8e8').pack(pady=5)  # Spacing
+        
+        tk.Label(self.scrollable_frame, text="Click 'Launch' to start using SmartReader Enhanced!",
                 font=('Arial', 12, 'bold'), bg='white',
                 fg=self.colors['primary']).pack(pady=(30, 0))
         
         # Change Next button to Launch
-        self.next_button.config(text="Launch SmartReader",
+        self.next_button.config(text="Launch",
                                command=self.launch_app,
                                bg=self.colors['success'])
         self.back_button.config(state=tk.DISABLED)
@@ -535,6 +569,7 @@ Please try:
             self.on_complete()
         else:
             try:
+                # ENHANCED: Import enhanced GUI
                 from book_rag_gui import BookRAGApp
                 root = tk.Tk()
                 BookRAGApp(root)
