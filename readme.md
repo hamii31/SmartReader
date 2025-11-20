@@ -1,4 +1,4 @@
-# 📚 SmartReader
+# SmartReader
 
 > Your personal AI-powered book assistant that runs completely offline
 
@@ -11,24 +11,16 @@ SmartReader is a Windows desktop application that transforms how you interact wi
 
 ---
 
-## ✨ Features
-
-### 🔐 Privacy First
+## Features
 - **100% Local** - All processing happens on your machine
 - **No Cloud Dependencies** - Your documents never leave your computer
 - **Completely Offline** - Works without internet after initial setup
-
-### 💬 Natural Interaction
 - **Plain English Queries** - Ask questions like you're talking to a person
 - **Context-Aware Answers** - Get relevant responses based on your document
 - **Page Citations** - Every answer includes exact page references
-
-### 🚀 Performance
 - **Smart Caching** - Books are indexed once, then load instantly
 - **Large Document Support** - Handle 900+ page books effortlessly
 - **Fast Responses** - Get answers in 5-10 seconds
-
-### 🎯 User Experience
 - **Setup Wizard** - Guided installation for first-time users
 - **Clean Interface** - Intuitive design focused on productivity
 - **No Configuration** - Works out of the box
@@ -38,7 +30,7 @@ SmartReader is a Windows desktop application that transforms how you interact wi
 - No manual terminal commands needed
 - One-click installation experience
 
-## 💾 Data Storage & Cache Management
+## Data Storage & Cache Management
 
 SmartReader stores cached book indexes in a permanent location:
 
@@ -46,24 +38,18 @@ SmartReader stores cached book indexes in a permanent location:
 **macOS:** `~/Library/Application Support/SmartReader/cache`  
 **Linux:** `~/.config/smartreader/cache`
 
-### Why Permanent Cache?
-- ✅ Cache survives app updates
-- ✅ Cache works regardless of where you run the .exe
-- ✅ Move SmartReader anywhere without re-indexing
-- ✅ Professional desktop application standard
-
 ### Managing Cache
 - **View cache location:** Tools → Cache Location
 - **Clear all cached books:** Tools → Clear Cache
 - **Manual cleanup:** Simply delete the cache folder
 
 Cache files are named uniquely based on PDF content, so:
-- Same PDF = reuses cache ✅
-- Modified PDF = creates new cache ✅
-- Renamed PDF = still finds cache ✅
+- Same PDF = reuses cache 
+- Modified PDF = creates new cache 
+- Renamed PDF = still finds cache 
 ---
 
-## 📥 Download
+## Download
 
 ### Latest Release (v2.0.0)
 
@@ -73,19 +59,7 @@ Cache files are named uniquely based on PDF content, so:
 
 **Check regularly for new releases!**
 
-## 📋 System Requirements
-
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| **OS** | Windows 10 (64-bit) | Windows 11 |
-| **RAM** | 8 GB | 16 GB |
-| **Storage** | 10 GB free | 20 GB free |
-| **CPU** | Intel i5 / AMD Ryzen 5 | Intel i7 / AMD Ryzen 7 |
-| **Internet** | Required for setup only | - |
-
----
-
-## ⚡ Quick Start
+## Quick Start
 
 ### Installation (3 steps, ~10 minutes)
 
@@ -107,10 +81,8 @@ Cache files are named uniquely based on PDF content, so:
 **Then:** Use forever, completely offline!
 
 ### After Setup
-- ✅ No internet needed
-- ✅ 100% private
-- ✅ Works offline
-- ✅ Cache books once, query forever
+- Works offline
+- Cache books once, query forever
 
 ### First Use
 
@@ -130,7 +102,7 @@ Cache files are named uniquely based on PDF content, so:
 "What are the key findings on page 45-50?"
 ```
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Core Technologies
 - **Python 3.14** - Application framework
@@ -150,24 +122,9 @@ Cache files are named uniquely based on PDF content, so:
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 SmartReader implements a **Retrieval-Augmented Generation (RAG)** pipeline:
-```mermaid
-graph LR
-    A[PDF Upload] --> B[Text Extraction]
-    B --> C[Chunking]
-    C --> D[Embedding]
-    D --> E[Vector Index]
-    F[User Query] --> G[Query Embedding]
-    G --> H[Similarity Search]
-    E --> H
-    H --> I[Context Retrieval]
-    I --> J[LLM Generation]
-    J --> K[Answer + Citations]
-```
-
-### Pipeline Steps
 
 1. **PDF Ingestion** 
    - Extract text while preserving page numbers
@@ -196,7 +153,7 @@ graph LR
 
 ---
 
-## 🔧 Building from Source
+## Building from Source
 
 ### Prerequisites
 ```bash
@@ -241,29 +198,9 @@ python build_executable.py
 cd dist
 SmartReader.exe
 ```
-
 ---
 
-## 📦 Project Structure
-```
-SmartReader/
-│
-├── main_launcher.py          # Entry point and setup checker
-├── setup_wizard.py           # First-time setup wizard
-├── book_rag_gui.py          # Main application GUI
-├── ollama_book_rag.py       # RAG engine implementation
-├── build_executable.py      # PyInstaller build script
-├── requirements.txt         # Python dependencies
-│
-├── cache/                   # Book indexes (auto-generated)
-├── dist/                    # Built executable
-│
-└── README.md               # This file
-```
-
----
-
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Windows Security Warning
 
@@ -305,42 +242,14 @@ SmartReader/
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Here's how you can help:
-
-### Reporting Bugs
+## Reporting Bugs
 - Use the [issue tracker](https://github.com/hamii31/SmartReader/issues)
 - Include steps to reproduce
 - Attach error logs if available
 
-### Suggesting Features
-- Open an issue with the "enhancement" label
-- Describe your use case
-- Explain why it would be useful
-
-### Pull Requests
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Setup
-```bash
-# Install dev dependencies
-pip install -r requirements-dev.txt
-
-# Run tests
-python -m pytest tests/
-
-# Format code
-black .
-```
-
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 ```
@@ -362,46 +271,5 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 ```
-
----
-
-## 🙏 Acknowledgments
-
-- **Ollama Team** - For making local LLM inference accessible
-- **Meta AI** - For the Llama model family
-- **Nomic AI** - For the excellent embedding model
-- **Python Community** - For the amazing ecosystem
-- **Open Source Contributors** - For inspiration and tools
-
----
-
-## 👨‍💻 Author Info
-
-**Hami**
-
-- 🌐 [Other Deployed Projects](https://share.streamlit.io/user/hamii31)
-- 💼 [LinkedIn](https://www.linkedin.com/in/hami-ibriyamov/)
-- 🐙 [GitHub](https://github.com/hamii31)
-- 📧 Email: ibriyamovhami@gmail.com
-
----
-
-## 📊 Stats
-
-![GitHub stars](https://img.shields.io/github/stars/hamii31/SmartReader?style=social)
-![GitHub forks](https://img.shields.io/github/forks/hamii31/SmartReader?style=social)
-![GitHub watchers](https://img.shields.io/github/watchers/hamii31/SmartReader?style=social)
-
----
-
-## 💖 Support
-
-If you find SmartReader useful, consider:
-
-- ⭐ **Starring** the repository
-- 🐛 **Reporting bugs** you encounter
-- 💡 **Suggesting features** you'd like
-- 📢 **Sharing** with others who might benefit
-- ☕ **[Buy me a coffee](https://buymeacoffee.com/ibriyamovhq)** 
 
 ---
