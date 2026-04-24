@@ -52,7 +52,7 @@ Cache files are named uniquely based on PDF content, so:
 
 ## Download
 
-### Latest Release (v2.0.0)
+### Final Release (v2.1.0)
 
 **[⬇️ Download SmartReader.exe](https://github.com/hamii31/SmartReader/releases/download/v2.0.0/SmartReader.exe)**
 
