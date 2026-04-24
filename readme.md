@@ -1,4 +1,5 @@
 # SmartReader
+[![DOI](https://zenodo.org/badge/1085813235.svg)](https://doi.org/10.5281/zenodo.19735812)
 
 > Your personal AI-powered book assistant that runs completely offline
 
